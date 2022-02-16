@@ -38,7 +38,7 @@ class Player(BaseWidget):
         col1, col2 = st.columns(2)
         
         self.speed = col1.number_input('Speed', 0, 10, 5, 1)
-        self.window = col2.selectbox('View', ['wide', 'zoomed'])
+        self.window = col2.selectbox('View', ['zoomed', 'wide'])
         self.update_view()
         
         image = plt.imshow(self.image[st.session_state.frame], cmap='gray')
@@ -79,6 +79,7 @@ class Player(BaseWidget):
                 
     def toggle_play(self):
         st.session_state.playing = not st.session_state.playing
+        st.session_state.frame -= 1
     
     def reset(self):
         st.session_state.playing = False

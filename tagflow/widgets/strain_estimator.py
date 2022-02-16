@@ -12,13 +12,14 @@ from .base import BaseWidget
 
 class StrainEstimator(BaseWidget):
     
-    def __init__(self, points: ArrayLike, roi: ArrayLike, radius: float,
+    def __init__(self, points: ArrayLike, roi: ArrayLike,
                  rbf_args: Dict[str, float] = dict(const=12, reg=1e-3)):
         
-        self.points = points
         self.cx, self.cy, self.radius = tuple(roi)
         # Define roi_centre with call to `mask`
         self.mesh = self.compute_mesh()
+        
+        self.points = np.swapaxes(points - self.roi_centre[:, :, None], 0, 1)
         
         self.Nt = self.points.shape[2]
         self.Np = self.mesh.shape[1]
@@ -59,18 +60,17 @@ class StrainEstimator(BaseWidget):
         return np.array(gl_strain)
         
     def display(self):
-        
-        if 'gl_strain' in st.session_state:
-            self.gl_strain = st.session_state.gl_strain
-        else:
-            self.gl_strain = self.solve()
+                
+        if 'gl_strain' not in st.session_state:
+            st.session_state.gl_strain = self.solve()
+        self.gl_strain = st.session_state.gl_strain
         
         fig, ax = plt.subplots(2, 2)
 
         peak = np.argmax(np.abs(self.gl_strain.mean(axis=2))[:, 0])
 
-        ax[0, 0].scatter(self.mesh[0], self.mesh[1], c=self.gl_strain[peak, 0, :], marker='o')
-        ax[1, 0].scatter(self.mesh[0], self.mesh[1], c=self.gl_strain[peak, 1, :], marker='o')
+        ax[0, 0].scatter(self.mesh[1], self.mesh[0], c=self.gl_strain[peak, 0, :], marker='o')
+        ax[1, 0].scatter(self.mesh[1], self.mesh[0], c=self.gl_strain[peak, 1, :], marker='o')
         
         ax[0, 1].plot(range(self.Nt), self.gl_strain.mean(axis=2)[:, 0])
         ax[1, 1].plot(range(self.Nt), self.gl_strain.mean(axis=2)[:, 1])
