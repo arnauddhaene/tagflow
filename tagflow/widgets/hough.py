@@ -18,6 +18,8 @@ class HoughReference(BaseWidget):
         self.image = image
         self.kernel = kernel
         
+        self.ref_points = None
+        
     def preprocess(self):
         
         # hc_input = self.image.var(axis=0) / self.image.mean(axis=0)
@@ -29,10 +31,10 @@ class HoughReference(BaseWidget):
     
     def reference(self, hc_input: ArrayLike, dp: float = 1., min_d: float = 200.,
                   min_r: int = 10, max_r: int = 30, p1: float = 70., p2: float = .8,
-                  circumf: int = 7, radial: int = 12):
+                  circ: int = 7, radial: int = 12):
         
         hc_params = dict(dp=dp, min_d=min_d, min_r=min_r, max_r=max_r, p1=p1, p2=p2,
-                         circumf=circumf, radial=radial)
+                         circ=circ, radial=radial)
         
         payload = {'image': hc_input.tolist(), **hc_params}
         hc_result = requests.post('http://127.0.0.1:5000/hough', json=payload).json()
@@ -52,10 +54,10 @@ class HoughReference(BaseWidget):
         p1 = col2.slider('Parameter 1', 10., 200., 70.)
         p2 = col3.slider('Parameter 2', .5, 1., .8)
         
-        circumf = col1.number_input('Circumferential grid dimensions', 3, 10, 7, 1)
-        radial = col2.number_input('Radial grid dimensions', 4, 30, 12, 1)
+        circ = col1.number_input('Circumferential grid dimensions', 4, 30, 6, 1)
+        radial = col2.number_input('Radial grid dimensions', 3, 10, 4, 1)
 
-        r0, circle = self.reference(hc_input, dp, min_d, min_r, max_r, p1, p2, circumf, radial)
+        r0, circle = self.reference(hc_input, dp, min_d, min_r, max_r, p1, p2, circ, radial)
 
         # Plot the points we are tracking
         fig, ax = plt.subplots(1, figsize=(12, 8))
@@ -63,6 +65,8 @@ class HoughReference(BaseWidget):
         ax.imshow(self.image[4], cmap='gray')
         ax.scatter(r0[:, 0], r0[:, 1], 30, c='r', marker='x')
         ax.axis('off')
+        
+        self.zoom_in()
 
         st.pyplot(fig)
 
@@ -74,9 +78,23 @@ class HoughReference(BaseWidget):
         if st.session_state.reference is not None:
             clear.button('Clear reference tracking points', on_click=self.clear_reference)
 
+    def zoom_in(self):
+        if self.ref_points is None:
+            height, width = tuple(self.image.shape[1:])
+            
+            xmin, xmax = width * .25, width * .75
+            ymin, ymax = height * .75, height * .25
+        else:
+            xmin, xmax = self.ref_points[0, :].min(), self.ref_points[0, :].max()
+            ymin, ymax = self.ref_points[1, :].min(), self.ref_points[1, :].max()
+        
+        plt.xlim(xmin * .9, xmax * 1.05)
+        plt.ylim(ymin * .9, ymax * 1.05)
+
     def save_reference(self, r0: ArrayLike, circle: ArrayLike):
         st.session_state.reference = r0
         st.session_state.roi = circle
+        self.ref_points = st.session_state.reference
         
     def clear_reference(self):
         st.session_state.reference = None

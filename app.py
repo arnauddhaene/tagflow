@@ -77,9 +77,9 @@ def get_roi():
         payload = request.get_json(force=True)
         hc_input = np.array(payload['image'])
 
-        params = ['dp', 'min_d', 'min_r', 'max_r', 'p1', 'p2', 'circumf', 'radial']
-        dp, min_d, min_r, max_r, p1, p2, circumf, radial = tuple(map(lambda k: payload[k],
-                                                                     params))
+        params = ['dp', 'min_d', 'min_r', 'max_r', 'p1', 'p2', 'circ', 'radial']
+        dp, min_d, min_r, max_r, p1, p2, circ, radial = tuple(map(lambda k: payload[k],
+                                                                  params))
 
         circles = cv2.HoughCircles(hc_input.astype(np.uint8),
                                    cv2.HOUGH_GRADIENT,
@@ -96,8 +96,8 @@ def get_roi():
         Cx, Cy, R = tuple(circles[0, 0])
 
         # Same concept as Ferdian's paper - 128 totalx/ tracking points
-        rhos = np.linspace(R * 0.5, R * 0.9, circumf)
-        thetas = np.linspace(-np.pi + (np.pi / radial), np.pi - (np.pi / radial), radial)
+        rhos = np.linspace(R * 0.5, R * 0.9, radial)
+        thetas = np.linspace(-np.pi + (np.pi / circ), np.pi - (np.pi / circ), circ)
 
         polar_coords = np.array(list(itertools.product(rhos, thetas)))
 
