@@ -2,8 +2,6 @@
 
 Automated myocardial strain estimation using tagged MR images
 
----
-
 ### Dependencies
 
 The dependencies are included in `requirements.txt`. You also need to download `torch_track` and `tagsim` repositories (linked below).
