@@ -1,5 +1,15 @@
+tagsim/
+torch_track/
+cardiac-fcn/
+tag_gui/
+
+
+.DS_Store
+
 *.mat
 tagsim/scmr_temp
+
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
