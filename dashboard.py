@@ -1,12 +1,10 @@
-import requests
-
 import streamlit as st
 
 import tagflow.home
 import tagflow.reference
 import tagflow.strain
 
-from tagflow.lib.predict import predict
+from tagflow.src.predict import predict
 
 
 STANFORD_LOGO = 'https://disruptingafrica.com/images/4/42/Stanford_Logo.jpg'

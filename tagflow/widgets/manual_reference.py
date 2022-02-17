@@ -1,11 +1,7 @@
 from numpy.typing import ArrayLike
 
-import requests
-
-import cv2
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from PIL import Image, ImageEnhance
 
 import streamlit as st

@@ -1,5 +1,3 @@
-import numpy as np
-
 import streamlit as st
 
 from .widgets.strain_estimator import StrainEstimator

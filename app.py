@@ -1,11 +1,5 @@
-import itertools
-from pathlib import Path
-from typing import Tuple
-from tqdm import tqdm
-
 from flask import Flask, request, jsonify
 
-import cv2
 import numpy as np
 
 from tagflow.lib.predict import predict
