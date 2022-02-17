@@ -16,7 +16,7 @@ python app.py
 
 This will expose the following routes locally on `http://127.0.0.1:5000`:
 
-* `track/` which takes the image (time x width x height) and the reference points (Npoints x 2) and outputs the deformation field (Npoints x  2 x time) relative to the reference points. To get them in the image grid, use `points = deformation + reference[:, :, None]`
+* `track/` which takes the image (time x width x height) and the reference points (Npoints x 2) and outputs the deformation field (Npoints x  2 x time).
 * `hough/` which computes reference points using the Hough Transform with a circular template. It takes the image as input (time x width x height) as well as parameters relative to `cv2.HoughCircle` and the spacing for the circumferential and radial grid following Figure 3 of Ferdian et al., 2020.
 
 ### Web-app

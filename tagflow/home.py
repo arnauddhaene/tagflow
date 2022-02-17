@@ -7,7 +7,6 @@ import pydicom
 
 import streamlit as st
 
-from .utils import load_dcm_series
 from .widgets.player import Player
 
 
@@ -21,7 +20,9 @@ from .widgets.player import Player
 
 def write():
     
-    # imt, r0, y1r = load_data()
+    # imt, _, _ = load_data()
+    # st.session_state.image = imt
+    # Player(st.session_state.image, st.session_state.points).display()
     
     if st.session_state.image is None:
         

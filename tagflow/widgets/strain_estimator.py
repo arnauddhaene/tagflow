@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 import streamlit as st
 
-from ..rbf import RBF, get_principle_strain
+from ..src.rbf import RBF, get_principle_strain
 from .base import BaseWidget
 
 

@@ -6,6 +6,8 @@ import tagflow.home
 import tagflow.reference
 import tagflow.strain
 
+from tagflow.lib.predict import predict
+
 
 STANFORD_LOGO = 'https://disruptingafrica.com/images/4/42/Stanford_Logo.jpg'
 
@@ -52,19 +54,10 @@ def main():
     PAGES[selected_page].write()
 
 
-@st.cache
 def track():
-        
-    payload = {
-        'images': st.session_state.image.tolist(),
-        'points': st.session_state.reference.tolist()
-    }
-    
-    track_result = requests.post('http://127.0.0.1:5000/track', json=payload).json()
+    st.session_state.points = predict(st.session_state.image, st.session_state.reference) \
+        .swapaxes(0, 2)
 
-    y1r = track_result['prediction'] + st.session_state.reference[:, :, None]
-    st.session_state.points = y1r.swapaxes(0, 2)
-    
 
 if __name__ == '__main__':
     main()

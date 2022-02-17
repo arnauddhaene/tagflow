@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 from .reference_picker import ReferencePicker
+from ..src.hough import hough_circle
 
 
 class HoughReference(ReferencePicker):
@@ -62,16 +63,11 @@ class HoughReference(ReferencePicker):
         p1 = col1.slider('Parameter 1', 10., 200., 70.)
         p2 = col2.slider('Parameter 2', .5, 1., .8)
         
-        circ = col1.number_input('Circumferential grid', 4, 30, 6, 1)
-        radial = col2.number_input('Radial grid', 3, 10, 4, 1)
-        
-        hc_params = dict(dp=dp, min_d=min_d, min_r=min_r, max_r=max_r, p1=p1, p2=p2,
-                         circ=circ, radial=radial)
+        circ = col1.number_input('Circumferential grid', 4, 30, 6, 1, key='circ')
+        radial = col2.number_input('Radial grid', 3, 10, 4, 1, key='radial')
         
         hc_input = self.preprocess()
-        
-        payload = {'image': hc_input.tolist(), **hc_params}
-        hc_result = requests.post('http://127.0.0.1:5000/hough', json=payload).json()
-        
-        self.ref_points = np.array(hc_result['points'])
-        self.roi = np.array(hc_result['roi'])
+                
+        self.ref_points, self.roi = hough_circle(hc_input,
+                                                 dp, min_d, p1, p2, min_r, max_r,
+                                                 circ, radial)
