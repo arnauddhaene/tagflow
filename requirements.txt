@@ -4,7 +4,6 @@ streamlit==1.5.0
 numpy==1.22.1
 opencv_python==4.5.5.62
 scipy==1.5.2
-typing==3.10.0.0
 flask
 torch
 tqdm
