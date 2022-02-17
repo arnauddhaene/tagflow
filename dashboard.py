@@ -20,7 +20,7 @@ PAGES = {
 
 @st.cache
 def init():
-    
+    """Instantiate session storage with application-wide variables"""
     storage = ['points', 'reference', 'roi', 'image']
     
     for item in storage:
@@ -32,10 +32,9 @@ def main():
     
     init()
     
-    st.title('tagflow')
-    st.write('Automated myocardial strain estimation using tagged MR images')
+    st.sidebar.title('tagflow Navigation')
+    st.sidebar.write('Automated myocardial strain estimation using tagged MR images')
     
-    st.sidebar.title('Navigation')
     selected_page = st.sidebar.radio('Go to', PAGES.keys())
     
     st.sidebar.write("""---""")
@@ -45,6 +44,9 @@ def main():
     else:
         if st.session_state.points is None:
             st.sidebar.info('Tracking reference set, ready to compute deformations')
+            st.sidebar.button('Launch tracking', on_click=track)
+        else:
+            st.sidebar.info('Recompute tracking')
             st.sidebar.button('Launch tracking', on_click=track)
     
     PAGES[selected_page].write()

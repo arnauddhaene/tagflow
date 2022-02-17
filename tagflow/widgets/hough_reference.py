@@ -1,0 +1,77 @@
+from numpy.typing import ArrayLike
+
+import requests
+
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+import streamlit as st
+
+from .reference_picker import ReferencePicker
+
+
+class HoughReference(ReferencePicker):
+    """The Hough Transform reference tracking point picker
+
+    Attributes:
+        image (ArrayLike): the (T x W x H) input image
+        ref_points (ArrayLike): the (Npoints x 2) reference tracking points
+        roi (ArrayLike): circle coordinates for outer ROI [Cx, Cy, R]
+        kernel (int): Kernel size of blurring filter for preprocessing
+    """
+    
+    def __init__(self, image: ArrayLike, kernel: int = 5):
+        """Constructor d
+
+        Args:
+            image (ArrayLike): the (T x W x H) input image
+            kernel (int, optional): Blurring kernel size. Defaults to 5.
+        """
+        super().__init__(image)
+
+        self.kernel = kernel
+                
+    def preprocess(self) -> ArrayLike:
+        """Preprocessing pipeline before applying the Hough Transform
+
+        Returns:
+            ArrayLike: NumPy array of dimensions (w x h)
+        """
+        # hc_input = self.image.var(axis=0) / self.image.mean(axis=0)
+        hc_input = 255 - (self.image[4] - self.image.mean(axis=0))
+        hc_input = cv2.filter2D(hc_input, -1,
+                                np.ones((self.kernel, self.kernel), np.float32) / self.kernel ** 2)
+        
+        return hc_input
+    
+    def reference(self):
+        """Computes reference tracking points
+        
+        Modifies:
+            ref_points (ArrayLike): reference tracking points (Npoints x 2)
+            roi (ArrayLike): circle coordinates for outer ROI [Cx, Cy, R]
+        """
+
+        col1, col2 = st.sidebar.columns(2)
+
+        min_d = col1.slider('Minimum distance', 2., 200., 200.)
+        dp = col2.slider('DP', .9, 2., 1.)
+        min_r = col1.slider('Minimum radius', 1, 50, 10)
+        max_r = col2.slider('Maximum radius', 10, 100, 30)
+        p1 = col1.slider('Parameter 1', 10., 200., 70.)
+        p2 = col2.slider('Parameter 2', .5, 1., .8)
+        
+        circ = col1.number_input('Circumferential grid', 4, 30, 6, 1)
+        radial = col2.number_input('Radial grid', 3, 10, 4, 1)
+        
+        hc_params = dict(dp=dp, min_d=min_d, min_r=min_r, max_r=max_r, p1=p1, p2=p2,
+                         circ=circ, radial=radial)
+        
+        hc_input = self.preprocess()
+        
+        payload = {'image': hc_input.tolist(), **hc_params}
+        hc_result = requests.post('http://127.0.0.1:5000/hough', json=payload).json()
+        
+        self.ref_points = np.array(hc_result['points'])
+        self.roi = np.array(hc_result['roi'])

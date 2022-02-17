@@ -4,4 +4,9 @@ class BaseWidget():
         pass
     
     def display(self):
+        """Display in streamlit application
+
+        Raises:
+            NotImplementedError: forces children classes to implement this
+        """
         raise NotImplementedError

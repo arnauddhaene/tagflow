@@ -11,39 +11,69 @@ from .base import BaseWidget
 
 
 class StrainEstimator(BaseWidget):
+    """Strain estimation widget
+
+    Attributes:
+        cx, cy, radius (float): coordinates of LV ROI
+        mesh (ArrayLike): Set of all pixel coordinates within LV wall mask (2 x Npoints)
+        Nt (int): timepoints
+        Np (int): number of pixels in mesh
+        points (ArrayLike): the (Npoints x 2 x time) tracked points
+        rbf (RBF): the Radial Bias Function instance used for interpolation
+        gl_strain (ArrayLike): the computed strain (time x dir x point) with dirs circumferential,
+            radial, and longitudinal
+    """
     
     def __init__(self, points: ArrayLike, roi: ArrayLike,
                  rbf_args: Dict[str, float] = dict(const=12, reg=1e-3)):
+        """Constructor
+
+        Args:
+            points (ArrayLike): the (Npoints x 2 x time) tracked points
+            roi (ArrayLike): circle coordinates for outer ROI [Cx, Cy, R]
+            rbf_args (Dict[str, float], optional): Args for RBF instance.
+                Defaults to dict(const=12, reg=1e-3).
+        """
         
         self.cx, self.cy, self.radius = tuple(roi)
-        # Define roi_centre with call to `mask`
+        
         self.mesh = self.compute_mesh()
         
-        self.points = np.swapaxes(points - self.roi_centre[:, :, None], 0, 1)
+        self.points = np.swapaxes(points - np.array([self.cx, self.cy])[None, :, None], 0, 1)
         
         self.Nt = self.points.shape[2]
         self.Np = self.mesh.shape[1]
         
         self.rbf = RBF(self.points[:, :, 0], **rbf_args)
                 
-    def compute_mesh(self):
+    def compute_mesh(self) -> ArrayLike:
+        """Compute set of pixel coordinates in mesh from LV ROI and pseudo-wall estimation
+
+        Returns:
+            ArrayLike: Set of all pixel coordinates within LV wall mask (2 x Npoints) relative
+                to ROI centre
+        """
 
         x_idx, y_idx = tuple(map(lambda dim: np.arange(0, dim), st.session_state.image.shape[1:]))
 
         mask = (x_idx[:, np.newaxis] - self.cx) ** 2 + (y_idx[np.newaxis, :] - self.cy) ** 2 \
             < (.95 * self.radius) ** 2
-        lv_mask = (x_idx[:, np.newaxis] - self.cx) ** 2 + (y_idx[np.newaxis, :] - self.cy) ** 2 \
+        wall_mask = (x_idx[:, np.newaxis] - self.cx) ** 2 + (y_idx[np.newaxis, :] - self.cy) ** 2 \
             < (.4 * self.radius) ** 2
 
-        myocardial_mask = mask ^ lv_mask
+        myocardial_mask = mask ^ wall_mask
 
         mask_idx = np.array(np.where(myocardial_mask)).transpose()
         
-        self.roi_centre = mask_idx.mean(axis=0)[:, None].transpose()
-        
-        return (mask_idx - self.roi_centre).T
+        return (mask_idx - np.array([self.cx, self.cy])).T
     
-    def solve(self):
+    def solve(self) -> ArrayLike:
+        """Solve Radial Bias Function interpolation
+
+        Returns:
+            ArrayLike: the computed strain (time x dir x point) with dirs circumferential,
+            radial, and longitudinal
+        """
         
         gl_strain = []
 
@@ -60,8 +90,10 @@ class StrainEstimator(BaseWidget):
         return np.array(gl_strain)
         
     def display(self):
-                
-        if 'gl_strain' not in st.session_state:
+        """Display results in streamlit application"""
+
+        if ('gl_strain' not in st.session_state) or \
+                (self.mesh.shape[1] != st.session_state.gl_strain.shape[2]):
             st.session_state.gl_strain = self.solve()
         self.gl_strain = st.session_state.gl_strain
         
