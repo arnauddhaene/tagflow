@@ -2,6 +2,8 @@
 
 Automated myocardial strain estimation using tagged MR images
 
+[![flake8 Actions Status](https://github.com/arnauddhaene/tagflow/actions/workflows/lint.yml/badge.svg)](https://github.com/arnauddhaene/tagflow/actions) [![Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/arnauddhaene/tagflow/main/dashboard.py)
+
 ### Dependencies
 
 The dependencies are included in `requirements.txt` and `packages.txt`
