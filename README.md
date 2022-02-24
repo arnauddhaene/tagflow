@@ -2,7 +2,11 @@
 
 Automated myocardial strain estimation using tagged MR images
 
-[![flake8 Actions Status](https://github.com/arnauddhaene/tagflow/actions/workflows/lint.yml/badge.svg)](https://github.com/arnauddhaene/tagflow/actions) [![Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/arnauddhaene/tagflow/main/dashboard.py)
+[![flake8 Actions Status](https://github.com/arnauddhaene/tagflow/actions/workflows/lint.yml/badge.svg)](https://github.com/arnauddhaene/tagflow/actions) 
+[![Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/arnauddhaene/tagflow/main/dashboard.py)
+![Dependencies](https://img.shields.io/librariesio/github/arnauddhaene/tagflow)
+![Docker image](https://img.shields.io/docker/image-size/adhaene/tagflow)
+
 
 ### Dependencies
 
