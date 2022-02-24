@@ -13,7 +13,7 @@ The dependencies are included in `requirements.txt` and `packages.txt`
 Simply run
 
 ```bash
-streamlit run dashboard.py
+streamlit run app.py
 ```
 
 ### Running the code

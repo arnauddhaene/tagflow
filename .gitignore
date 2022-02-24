@@ -1,13 +1,7 @@
-tagsim/
-torch_track/
-cardiac-fcn/
-tag_gui/
-
-
 .DS_Store
 
 *.mat
-tagsim/scmr_temp
+sample_data
 
 .vscode/
 

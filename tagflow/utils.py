@@ -4,6 +4,8 @@ import numpy as np
 import torch
 from torch import nn
 
+import streamlit as st
+
 from .models.network_resnet2 import ResNet2
 
 
@@ -49,6 +51,7 @@ def get_patch_path(ims, path, is_scaled=False, width=32):
     return im_c2, c_path
 
 
+@st.cache
 def load_model(
     model_path: str,
     device: torch.device = torch.device('cpu')
