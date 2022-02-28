@@ -49,8 +49,8 @@ class ManualReference(ReferencePicker):
         
         xdim, ydim = tuple(self.image.shape[1:])
         
-        self.xmin, self.xmax = tuple(map(int, (xdim * .25, xdim * .75,)))
-        self.ymin, self.ymax = tuple(map(int, (ydim * .25, ydim * .75,)))
+        self.xmin, self.xmax = tuple(map(int, (xdim * .2, xdim * .7,)))
+        self.ymin, self.ymax = tuple(map(int, (ydim * .2, ydim * .7,)))
         
         contrast = st.sidebar.slider('Contrast', .5, 5., 1.25)
         brightness = st.sidebar.slider('Brightness', .5, 5., 1.25)
@@ -74,7 +74,7 @@ class ManualReference(ReferencePicker):
         
         canvas = st_canvas(
             fill_color='#FF0000', stroke_color='#FF0000',
-            stroke_width=3., drawing_mode='circle',
+            stroke_width=1., point_display_radius=3., drawing_mode='point',
             background_image=self.preprocess(), update_streamlit=True,
             height=self.stretch * (self.xmax - self.xmin),
             width=self.stretch * (self.ymax - self.ymin),
@@ -88,10 +88,14 @@ class ManualReference(ReferencePicker):
                 objects[col] = objects[col].astype('str')
                 
             if len(objects) > 0:
-                tl = np.array(objects[['left', 'top']])
-                wh = np.array(objects[['width', 'height']])
+                lt = np.array(objects[['left', 'top']])
+                r = np.array(objects['radius'])  # radius
+                sw = np.array(objects['strokeWidth']) / 2.  # half of strokeWidth
                 
-                self.ref_points = np.array([self.ymin, self.xmin]) + ((tl - wh / 2.)) / self.stretch
+                offset = np.vstack([r + sw, np.zeros_like(r)]).T
+                                
+                self.ref_points = np.array([self.ymin, self.xmin]) \
+                    + (lt + offset) / self.stretch
                 
                 centre = self.ref_points.mean(axis=0).T
                 radius = 1.1 * np.abs(np.linalg.norm(centre - self.ref_points, axis=1)).max()

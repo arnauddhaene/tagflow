@@ -2,7 +2,9 @@ from typing import Dict
 from numpy.typing import ArrayLike
 
 import numpy as np
+# import pandas as pd
 import matplotlib.pyplot as plt
+# import plotly.express as px
 
 import streamlit as st
 
@@ -106,5 +108,18 @@ class StrainEstimator(BaseWidget):
         
         ax[0, 1].plot(range(self.Nt), self.gl_strain.mean(axis=2)[:, 0])
         ax[1, 1].plot(range(self.Nt), self.gl_strain.mean(axis=2)[:, 1])
+        
+        # data = pd.DataFrame({
+        #     'Time': list(range(self.Nt)) + list(range(self.Nt)),
+        #     'Strain': np.hstack([self.gl_strain.mean(axis=2)[:, 0],
+        #                          self.gl_strain.mean(axis=2)[:, 1]]),
+        #     'Direction': ['Circumferential'] * self.Nt + ['Radial'] * self.Nt
+        # })
+        
+        # f = px.line(data, x='Time', y='Strain', facet_row='Direction')
+        # f2 = px.scatter(x=self.mesh[1], y=self.mesh[0], color=self.gl_strain[peak, 0, :])
+        
+        # st.plotly_chart(f)
+        # st.plotly_chart(f2) 
         
         st.pyplot(fig)

@@ -20,19 +20,15 @@ PAGES = {
 }
 
 
-@st.cache
-def init():
-    """Instantiate session storage with application-wide variables"""
-    storage = ['points', 'reference', 'roi', 'image']
-    
-    for item in storage:
-        if item not in st.session_state:
-            st.session_state[item] = None
-
-
 def main():
     
-    init()
+    tagflow.home.init()
+    
+    # Handle unexpected behavior that I don't like at all
+    if 'reference' not in st.session_state:
+        with st.spinner('App is being restarted and cache is being cleared.'):
+            st.legacy_caching.clear_cache()
+            st.experimental_rerun()
     
     st.sidebar.title('tagflow Navigation')
     st.sidebar.write('Automated myocardial strain estimation using tagged MR images')
