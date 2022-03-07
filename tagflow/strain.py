@@ -6,6 +6,7 @@ from .widgets.strain_estimator import StrainEstimator
 def write():
     if st.session_state.points is not None and st.session_state.roi is not None:
         StrainEstimator(st.session_state.points.swapaxes(0, 2),
-                        st.session_state.roi).display()
+                        st.session_state.roi,
+                        st.session_state.image).display()
     else:
         st.warning('Please predict deformation field before estimating Green-Lagrangian strain.')

@@ -11,13 +11,19 @@ def load_data():
     npz = np.load('sample_data/in_vivo_data.npz')
     y1r = np.load('sample_data/in_vivo_data_deformation.npz')['y1r']
     imt, r0 = npz['imt'], npz['r0']
-    return imt, r0, y1r.swapaxes(0, 2)
+    return imt, r0, y1r
 
 
 def load_sample():
-    imt, r0, _ = load_data()
+    imt, r0, y1r = load_data()
     st.session_state.image = imt
     st.session_state.reference = r0
+    st.session_state.points = y1r.swapaxes(0, 2)
+    
+    centre = r0.mean(axis=0).T
+    radius = 1.1 * np.abs(np.linalg.norm(centre - r0, axis=1)).max()
+
+    st.session_state.roi = np.array([*centre, radius])
 
 
 @st.cache

@@ -48,7 +48,7 @@ The folder structure should be as followed:
 |   ├── src              <- Source files
 |   ├── widgets          <- Streamlit widgets
 |   └── ...              <- Streamlit web-app pages
-├── dashboard.py         <- Main file for Streamlit web-app
+├── app.py         <- Main file for Streamlit web-app
 ├── packages.txt         <- Package dependencies for Streamlit Cloud
 ├── README.md            <- The file you are currently reading
 ├── requirements.txt     <- Dependencies
