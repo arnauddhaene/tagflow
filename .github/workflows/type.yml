@@ -18,5 +18,3 @@ jobs:
     - name: mypy
       run: |
         mypy tagflow
-      with:
-        config: mypy.ini
