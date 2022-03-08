@@ -1,5 +1,3 @@
-from numpy.typing import ArrayLike
-
 from tqdm import tqdm
 from pathlib import Path
 
@@ -11,7 +9,7 @@ from ..utils import load_model, get_patch_path
 MODEL_PATH = Path(__file__).parent.parent / 'network_saves/resnet2_grid_tracking.pt'
 
 
-def predict(imt: ArrayLike, r0: ArrayLike) -> ArrayLike:
+def predict(imt: np.ndarray, r0: np.ndarray) -> np.ndarray:
     
     # Number of reference tracking points
     N = r0.shape[0]
@@ -31,16 +29,16 @@ def predict(imt: ArrayLike, r0: ArrayLike) -> ArrayLike:
     device = torch.device('cpu')
     model = load_model(MODEL_PATH, device=device)
 
-    y1 = []
+    _y1 = []
 
     with torch.no_grad():
         for i in tqdm(range(N_batches)):
             x = X[i * batch_size:(i + 1) * batch_size]
             x = torch.from_numpy(x).to(device)
             y_pred = model(x)
-            y1.append(y_pred.detach().cpu().numpy())
+            _y1.append(y_pred.detach().cpu().numpy())
 
-    y1 = np.vstack(y1)
+    y1: np.ndarray = np.vstack(_y1)
     y1 = y1.reshape(-1, 2, 25)
     
     return y1 + r0[:, :, None]

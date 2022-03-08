@@ -1,5 +1,4 @@
 from typing import Tuple
-from numpy.typing import ArrayLike
 
 import itertools
 
@@ -10,10 +9,10 @@ from ..utils import polar_to_cartesian
 
 
 def hough_circle(
-    image: ArrayLike,
+    image: np.ndarray,
     dp: float, min_d: float, p1: float, p2: float,
     min_r: float, max_r: float, circ: int, radial: int
-) -> Tuple[ArrayLike, ArrayLike]:
+) -> Tuple[np.ndarray, np.ndarray]:
     
     circles = cv2.HoughCircles(image.astype(np.uint8), cv2.HOUGH_GRADIENT,
                                dp=dp, minDist=min_d, param1=p1, param2=p2,

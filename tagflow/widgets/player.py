@@ -1,7 +1,7 @@
 import time
+from typing import Optional
 
 import numpy as np
-from numpy.typing import ArrayLike
 import matplotlib.pyplot as plt
 
 import streamlit as st
@@ -20,16 +20,16 @@ class Player(BaseWidget):
         window (str): 'zoomed' or 'wide' view of the image
     """
     
-    def __init__(self, image: ArrayLike, points: ArrayLike = None):
+    def __init__(self, image: np.ndarray, points: np.ndarray = None):
         """Constructor
 
         Args:
-            image (ArrayLike): the (T x W x H) input image
-            points (ArrayLike): Tracked points (time x 2 x Npoints). Defaults to None.
+            image (np.ndarray): the (T x W x H) input image
+            points (np.ndarray): Tracked points (time x 2 x Npoints). Defaults to None.
         """
-        self.image = image
-        self.points = points
-        self.Nt = image.shape[0]
+        self.image: np.ndarray = image
+        self.points: Optional[np.ndarray] = points
+        self.Nt: int = image.shape[0]
         
         self.init_state()
         

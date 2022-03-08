@@ -1,4 +1,5 @@
 from typing import Tuple
+from numpy.typing import ArrayLike
 
 import numpy as np
 import torch
@@ -7,6 +8,12 @@ from torch import nn
 import streamlit as st
 
 from .models.network_resnet2 import ResNet2
+
+
+def unpack_roi(roi: ArrayLike) -> Tuple[float, float, float]:
+    # Handles type hinting to return Cx, Cy, and R
+    roi = np.array(roi)
+    return roi[0], roi[1], roi[2]
 
 
 def get_patch_path(ims, path, is_scaled=False, width=32):

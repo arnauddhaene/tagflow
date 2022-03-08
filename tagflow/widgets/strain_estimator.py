@@ -8,6 +8,7 @@ import streamlit as st
 
 from ..src.rbf import RBF, get_principle_strain
 from .base import BaseWidget
+from ..utils import unpack_roi
 
 
 hv.extension('bokeh')
@@ -27,7 +28,7 @@ class StrainEstimator(BaseWidget):
             radial, and longitudinal
     """
     
-    def __init__(self, points: ArrayLike, roi: ArrayLike, image: ArrayLike,
+    def __init__(self, points: np.ndarray, roi: ArrayLike, image: np.ndarray,
                  rbf_args: Dict[str, float] = dict(const=12, reg=1e-3)):
         """Constructor
 
@@ -38,20 +39,22 @@ class StrainEstimator(BaseWidget):
             rbf_args (Dict[str, float], optional): Args for RBF instance.
                 Defaults to dict(const=12, reg=1e-3).
         """
+        self.cx: float
+        self.cy: float
+        self.radius: float
+        self.cx, self.cy, self.radius = unpack_roi(roi)
+        self.image: np.ndarray = image
         
-        self.cx, self.cy, self.radius = tuple(roi)
-        self.image = image
+        self.mesh: np.ndarray = self.compute_mesh()
         
-        self.mesh = self.compute_mesh()
+        self.points: np.ndarray = np.swapaxes(points - np.array([self.cx, self.cy])[None, :, None], 0, 1)
         
-        self.points = np.swapaxes(points - np.array([self.cx, self.cy])[None, :, None], 0, 1)
-        
-        self.Nt = self.points.shape[2]
-        self.Np = self.mesh.shape[1]
-        
-        self.rbf = RBF(self.points[:, :, 0], **rbf_args)
+        self.Nt: int = self.points.shape[2]
+        self.Np: int = self.mesh.shape[1]
+
+        self.rbf: RBF = RBF(self.points[:, :, 0], **rbf_args)
                 
-    def compute_mesh(self) -> ArrayLike:
+    def compute_mesh(self) -> np.ndarray:
         """Compute set of pixel coordinates in mesh from LV ROI and pseudo-wall estimation
 
         Returns:

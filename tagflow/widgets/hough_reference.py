@@ -19,7 +19,7 @@ class HoughReference(ReferencePicker):
         kernel (int): Kernel size of blurring filter for preprocessing
     """
     
-    def __init__(self, image: ArrayLike, kernel: int = 5):
+    def __init__(self, image: np.ndarray, kernel: int = 5):
         """Constructor d
 
         Args:
@@ -28,7 +28,7 @@ class HoughReference(ReferencePicker):
         """
         super().__init__(image)
 
-        self.kernel = kernel
+        self.kernel: int = kernel
                 
     def preprocess(self) -> ArrayLike:
         """Preprocessing pipeline before applying the Hough Transform

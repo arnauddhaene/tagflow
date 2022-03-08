@@ -1,5 +1,6 @@
-from numpy.typing import ArrayLike
+from typing import Optional
 
+import numpy as np
 import matplotlib.pyplot as plt
 
 import streamlit as st
@@ -11,20 +12,20 @@ class ReferencePicker(BaseWidget):
     """Parent Widget class for a reference tracking point set picker
 
     Attributes:
-        image (ArrayLike): the (T x W x H) input image
-        ref_points (ArrayLike): the (Npoints x 2) reference tracking points
-        roi (ArrayLike): circle coordinates for outer ROI [Cx, Cy, R]
+        image (np.ndarray): the (T x W x H) input image
+        ref_points (np.ndarray): the (Npoints x 2) reference tracking points
+        roi (np.ndarray): circle coordinates for outer ROI [Cx, Cy, R]
     """
     
-    def __init__(self, image: ArrayLike):
+    def __init__(self, image: np.ndarray):
         """Constructor
 
         Args:
             image (ArrayLike): the (T x W x H) input image
         """
-        self.image = image
-        self.ref_points = None
-        self.roi = None
+        self.image: np.ndarray = image
+        self.ref_points: Optional[np.ndarray] = None
+        self.roi: Optional[np.ndarray] = None
     
     def reference(self):
         """This method should compute self.ref_points and self.roi

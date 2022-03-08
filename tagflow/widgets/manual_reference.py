@@ -1,11 +1,9 @@
-from numpy.typing import ArrayLike
-
 import numpy as np
 import pandas as pd
 from PIL import Image, ImageEnhance
 
 import streamlit as st
-from streamlit_drawable_canvas import st_canvas
+from streamlit_drawable_canvas import st_canvas  # type:ignore
 
 from .reference_picker import ReferencePicker
 
@@ -21,11 +19,11 @@ class ManualReference(ReferencePicker):
         drawed_annot (Dict[Any, Any]): save-able annotation from drawable canvas
     """
     
-    def __init__(self, image: ArrayLike, stretch: int = 6):
+    def __init__(self, image: np.ndarray, stretch: int = 6):
         """Constructor
 
         Args:
-            image (ArrayLike): the (T x W x H) input image
+            image (np.ndarray): the (T x W x H) input image
             stretch (int, optional): stretch factor for displaying the drawable canvas.
                 Defaults to 6.
         """
