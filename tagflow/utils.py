@@ -7,7 +7,7 @@ from torch import nn
 
 import streamlit as st
 
-from .models.network_resnet2 import ResNet2
+from .models.tracking.resnet2 import ResNet2
 
 
 def unpack_roi(roi: ArrayLike) -> Tuple[float, float, float]:

@@ -1,15 +1,20 @@
 from tqdm import tqdm
 from pathlib import Path
+from collections import OrderedDict
 
 import numpy as np
 import torch
+from torch import nn
+import torch.nn.functional as F
 
 from ..utils import load_model, get_patch_path
+from ..models.segmentation.unet import UNet
 
-MODEL_PATH = Path(__file__).parent.parent / 'network_saves/resnet2_grid_tracking.pt'
+TRACK_MODEL_PATH = Path(__file__).parent.parent / 'network_saves/resnet2_grid_tracking.pt'
+ROI_MODEL_PATH = Path(__file__).parent.parent / 'network_saves/model_cine_tag_v1_sd.pt'
 
 
-def predict(imt: np.ndarray, r0: np.ndarray) -> np.ndarray:
+def track(imt: np.ndarray, r0: np.ndarray) -> np.ndarray:
     
     # Number of reference tracking points
     N = r0.shape[0]
@@ -27,7 +32,7 @@ def predict(imt: np.ndarray, r0: np.ndarray) -> np.ndarray:
     N_batches = int(np.ceil(N / batch_size))
 
     device = torch.device('cpu')
-    model = load_model(MODEL_PATH, device=device)
+    model = load_model(TRACK_MODEL_PATH, device=device)
 
     _y1 = []
 
@@ -42,3 +47,18 @@ def predict(imt: np.ndarray, r0: np.ndarray) -> np.ndarray:
     y1 = y1.reshape(-1, 2, 25)
     
     return y1 + r0[:, :, None]
+
+
+def segment(imt: torch.Tensor) -> torch.Tensor:
+
+    if len(imt.shape) != 4:
+        raise ValueError(f'Expects 4 dimensions: B, C, W, H. Got {imt.shape}')
+
+    model: nn.Module = UNet(n_channels=1, n_classes=4, bilinear=True).double()
+    # Load old saved version of the model as a state dictionary
+    saved_model_sd: OrderedDict = torch.load(ROI_MODEL_PATH)
+    # Extract UNet if saved model is parallelized
+    model.load_state_dict(saved_model_sd)
+
+    out: torch.Tensor = model(imt)
+    return F.softmax(out, dim=1).argmax(dim=1).detach().numpy()

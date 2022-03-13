@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from .network_utils import AddCoords
+from .resnet2_utils import AddCoords
 
 
 def conv1xNxN(in_planes, out_planes, stride=1, ksize=3, padding=None):

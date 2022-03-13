@@ -59,6 +59,8 @@ class ReferencePicker(BaseWidget):
         fig, ax = plt.subplots(1, figsize=(12, 8))
 
         ax.imshow(self.image[0], cmap='gray')
+        if self.roi is not None:
+            ax.imshow(self.roi, alpha=.3)
         if self.ref_points is not None:
             ax.scatter(self.ref_points[:, 0], self.ref_points[:, 1], 30, c='r', marker='x')
         ax.axis('off')

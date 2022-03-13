@@ -1,6 +1,7 @@
 matplotlib==3.5.1
 numpy==1.21.5
 torch==1.10.2
+torchvision
 pandas==1.4.0
 scipy==1.5.3
 pydicom==2.2.2
@@ -10,3 +11,6 @@ opencv-python==4.5.5.62
 tqdm==4.62.3
 streamlit_drawable_canvas==0.9.0
 Pillow==9.0.1
+bokeh==2.4.1
+holoviews==1.14.8
+flake8

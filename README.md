@@ -44,6 +44,8 @@ The folder structure should be as followed:
 ├── sample_data          <- Sample image used for demo and debugging purposes
 ├── tagflow              <- Automated tracking web-app src
 |   ├── models           <- Neural Network architecture
+|   |   ├── segmentation <- segmentation related architecture and utils
+|   |   └── tracking     <- tracking related architecture and utils
 |   ├── network_saves    <- Checkpointed Neural Networks
 |   ├── src              <- Source files
 |   ├── widgets          <- Streamlit widgets

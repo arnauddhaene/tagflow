@@ -6,7 +6,7 @@ import tagflow.home
 import tagflow.reference
 import tagflow.strain
 
-from tagflow.src.predict import predict
+from tagflow.src.predict import track
 
 
 STANFORD_LOGO = 'https://disruptingafrica.com/images/4/42/Stanford_Logo.jpg'
@@ -42,17 +42,17 @@ def main():
     else:
         if st.session_state.points is None:
             st.sidebar.info('Tracking reference set, ready to compute deformations')
-            st.sidebar.button('Launch tracking', on_click=track)
+            st.sidebar.button('Launch tracking', on_click=_track)
         else:
             st.sidebar.info('Recompute tracking')
-            st.sidebar.button('Launch tracking', on_click=track)
+            st.sidebar.button('Launch tracking', on_click=_track)
     
     PAGES[selected_page].write()
 
 
 @st.cache(hash_funcs={builtins.complex: lambda _: None})
-def track():
-    st.session_state.points = predict(st.session_state.image, st.session_state.reference) \
+def _track():
+    st.session_state.points = track(st.session_state.image, st.session_state.reference) \
         .swapaxes(0, 2)
 
 

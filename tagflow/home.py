@@ -4,6 +4,7 @@ import pydicom
 import streamlit as st
 
 from .widgets.player import Player
+from .state.state import SessionState
 
 
 @st.cache
@@ -16,31 +17,25 @@ def load_data():
 
 def load_sample():
     imt, r0, y1r = load_data()
-    st.session_state.image = imt
-    st.session_state.reference = r0
-    st.session_state.points = y1r.swapaxes(0, 2)
-    
-    centre = r0.mean(axis=0).T
-    radius = 1.1 * np.abs(np.linalg.norm(centre - r0, axis=1)).max()
+    ss = SessionState()
 
-    st.session_state.roi = np.array([*centre, radius])
+    ss.image.update(imt)
+    ss.reference.update(r0)
+    ss.deformation.update(y1r.swapaxes(0, 2))
+    
+    # centre = r0.mean(axis=0).T
+    # radius = 1.1 * np.abs(np.linalg.norm(centre - r0, axis=1)).max()
+
+    # st.session_state.roi = np.array([*centre, radius])
 
 
 @st.cache
 def init():
-    """Instantiate session storage with application-wide variables"""
-    storage = ['points', 'reference', 'roi', 'image']
-    
-    for item in storage:
-        if item not in st.session_state:
-            st.session_state[item] = None
+    SessionState()
             
 
 def clear():
-    st.legacy_caching.clear_cache()
-    st.session_state.image = None
-    st.session_state.roi = None
-    st.session_state.reference = None
+    SessionState().clear()
 
 
 def write():
