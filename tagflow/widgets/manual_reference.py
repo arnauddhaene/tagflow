@@ -19,7 +19,7 @@ class ManualReference(ReferencePicker):
         drawed_annot (Dict[Any, Any]): save-able annotation from drawable canvas
     """
     
-    def __init__(self, image: np.ndarray, stretch: int = 6):
+    def __init__(self, stretch: int = 6):
         """Constructor
 
         Args:
@@ -27,7 +27,7 @@ class ManualReference(ReferencePicker):
             stretch (int, optional): stretch factor for displaying the drawable canvas.
                 Defaults to 6.
         """
-        super().__init__(image)
+        super().__init__()
         
         self.stretch = stretch
         
@@ -98,7 +98,10 @@ class ManualReference(ReferencePicker):
                 centre = self.ref_points.mean(axis=0).T
                 radius = 1.1 * np.abs(np.linalg.norm(centre - self.ref_points, axis=1)).max()
                 
-                self.roi = np.array([*centre, radius])
+                circle = np.array([*centre, radius])
+                shape = self.image.shape[1:]
+                self.roi = self.circle_mask(circle, shape, 0.9) ^ \
+                    self.circle_mask(circle, shape, 0.5)
                 
     def plot(self):
         """No need to plot the image here as it serves as the background of the

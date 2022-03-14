@@ -19,14 +19,13 @@ class HoughReference(ReferencePicker):
         kernel (int): Kernel size of blurring filter for preprocessing
     """
     
-    def __init__(self, image: np.ndarray, kernel: int = 5):
+    def __init__(self, kernel: int = 5):
         """Constructor d
 
         Args:
-            image (ArrayLike): the (T x W x H) input image
             kernel (int, optional): Blurring kernel size. Defaults to 5.
         """
-        super().__init__(image)
+        super().__init__()
 
         self.kernel: int = kernel
                 
@@ -65,6 +64,9 @@ class HoughReference(ReferencePicker):
         
         hc_input = self.preprocess()
                 
-        self.ref_points, self.roi = hough_circle(hc_input,
-                                                 dp, min_d, p1, p2, min_r, max_r,
-                                                 circ, radial)
+        self.ref_points, circle = hough_circle(hc_input,
+                                               dp, min_d, p1, p2, min_r, max_r,
+                                               int(circ), int(radial))
+                
+        self.roi = self.circle_mask(circle, hc_input.shape, 0.9) ^ \
+            self.circle_mask(circle, hc_input.shape, 0.5)

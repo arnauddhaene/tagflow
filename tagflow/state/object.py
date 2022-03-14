@@ -47,6 +47,7 @@ class Image(StateObject):
     def __init__(self, value: np.ndarray = None):
         super().__init__('image', value)
 
+    @staticmethod
     def _validate(value: np.ndarray) -> np.ndarray:
 
         value = _validate_ndarray(value)
@@ -56,6 +57,8 @@ class Image(StateObject):
 
         if not value.dtype == np.float64:
             value = value.astype(np.float64)
+            
+        return value
 
 
 class Reference(StateObject):
@@ -63,6 +66,7 @@ class Reference(StateObject):
     def __init__(self, value: np.ndarray = None):
         super().__init__('reference', value)
 
+    @staticmethod
     def _validate(value: np.ndarray) -> np.ndarray:
 
         value = _validate_ndarray(value)
@@ -73,12 +77,15 @@ class Reference(StateObject):
         if not value.dtype == np.float64:
             value = value.astype(np.float64)
 
+        return value
+
 
 class Deformation(StateObject):
 
     def __init__(self, value: np.ndarray = None):
         super().__init__('deformation', value)
 
+    @staticmethod
     def _validate(value: np.ndarray) -> np.ndarray:
 
         value = _validate_ndarray(value)
@@ -89,12 +96,15 @@ class Deformation(StateObject):
         if not value.dtype == np.float64:
             value = value.astype(np.float64)
 
+        return value
+
 
 class RoI(StateObject):
 
     def __init__(self, value: np.ndarray = None):
         super().__init__('roi', value)
 
+    @staticmethod
     def _validate(value: np.ndarray) -> np.ndarray:
 
         value = _validate_ndarray(value)
@@ -105,12 +115,15 @@ class RoI(StateObject):
         if not value.dtype == bool:
             value = value.astype(bool)
 
+        return value
+
 
 class Strain(StateObject):
 
     def __init__(self, value: np.ndarray = None):
         super().__init__('strain', value)
 
+    @staticmethod
     def _validate(value: np.ndarray) -> np.ndarray:
 
         value = _validate_ndarray(value)
@@ -120,3 +133,5 @@ class Strain(StateObject):
 
         if not value.dtype == np.float64:
             value = value.astype(np.float64)
+
+        return value

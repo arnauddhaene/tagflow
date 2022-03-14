@@ -8,7 +8,7 @@ import streamlit as st
 
 from ..src.rbf import RBF, get_principle_strain
 from .base import BaseWidget
-from ..utils import unpack_roi
+from ..state.state import SessionState
 
 
 hv.extension('bokeh')
@@ -28,50 +28,43 @@ class StrainEstimator(BaseWidget):
             radial, and longitudinal
     """
     
-    def __init__(self, points: np.ndarray, roi: ArrayLike, image: np.ndarray,
-                 rbf_args: Dict[str, float] = dict(const=12, reg=1e-3)):
+    def __init__(self, rbf_args: Dict[str, float] = dict(const=12, reg=1e-3)):
         """Constructor
 
         Args:
-            points (ArrayLike): the (Npoints x 2 x time) tracked points
+            points (ArrayLike): the (time x Npoints x 2) tracked points
             roi (ArrayLike): circle coordinates for outer ROI [Cx, Cy, R]
             image (ArrayLike): image
             rbf_args (Dict[str, float], optional): Args for RBF instance.
                 Defaults to dict(const=12, reg=1e-3).
         """
-        self.cx: float
-        self.cy: float
-        self.radius: float
-        self.cx, self.cy, self.radius = unpack_roi(roi)
-        self.image: np.ndarray = image
+        ss = SessionState()
         
-        self.mesh: np.ndarray = self.compute_mesh()
+        self.image: np.ndarray = ss.image.value()
         
-        self.points: np.ndarray = np.swapaxes(points - np.array([self.cx, self.cy])[None, :, None], 0, 1)
+        points = ss.deformation.value()
+        self.cx, self.cy = points.mean(axis=(0, 1))
         
-        self.Nt: int = self.points.shape[2]
+        self.mesh: np.ndarray = self.compute_mesh(ss.roi.value())
+        # Needs to be (2 x Npoints time) to be solved more efficiently
+        self.deformation: np.ndarray = np.swapaxes(points - np.array([self.cx, self.cy])[None, None, :], 0, 2)
+                                                           
+        self.Nt: int = self.deformation.shape[2]
         self.Np: int = self.mesh.shape[1]
 
-        self.rbf: RBF = RBF(self.points[:, :, 0], **rbf_args)
+        self.rbf: RBF = RBF(self.deformation[:, :, 0], **rbf_args)
                 
-    def compute_mesh(self) -> np.ndarray:
+    def compute_mesh(self, roi: np.ndarray) -> np.ndarray:
         """Compute set of pixel coordinates in mesh from LV ROI and pseudo-wall estimation
+
+        Args:
+            roi (np.ndarray): Binary mask of LV myocardium (W x H).
 
         Returns:
             ArrayLike: Set of all pixel coordinates within LV wall mask (2 x Npoints) relative
                 to ROI centre
         """
-
-        x_idx, y_idx = tuple(map(lambda dim: np.arange(0, dim), self.image.shape[1:]))
-
-        mask = (x_idx[:, np.newaxis] - self.cx) ** 2 + (y_idx[np.newaxis, :] - self.cy) ** 2 \
-            < (.95 * self.radius) ** 2
-        wall_mask = (x_idx[:, np.newaxis] - self.cx) ** 2 + (y_idx[np.newaxis, :] - self.cy) ** 2 \
-            < (.4 * self.radius) ** 2
-
-        myocardial_mask = mask ^ wall_mask
-
-        mask_idx = np.array(np.where(myocardial_mask)).transpose()
+        mask_idx = np.array(np.where(roi)).T
         
         return (mask_idx - np.array([self.cx, self.cy])).T
     
@@ -86,7 +79,7 @@ class StrainEstimator(BaseWidget):
         gl_strain = []
 
         for time in range(self.Nt):
-            points_t = self.points[:, :, time]
+            points_t = self.deformation[:, :, time]
             deformation_grad = np.zeros([self.Np, 3, 3])
             
             for dim in range(2):
@@ -99,11 +92,13 @@ class StrainEstimator(BaseWidget):
         
     def display(self):
         """Display results in streamlit application"""
+        ss = SessionState()
 
-        if ('gl_strain' not in st.session_state) or \
-                (self.mesh.shape[1] != st.session_state.gl_strain.shape[2]):
-            st.session_state.gl_strain = self.solve()
-        self.gl_strain = st.session_state.gl_strain
+        # self.mesh.shape[1] != st.session_state.gl_strain.shape[2]
+        # if ss.strain.value() is None:
+        ss.strain.update(self.solve())
+
+        self.gl_strain = ss.strain.value()
         
         peaks = np.argmax(np.abs(self.gl_strain.mean(axis=2)), axis=0)
                 
@@ -113,12 +108,12 @@ class StrainEstimator(BaseWidget):
         strain_c = hv.Dimension('strain_c', label='Circumferential strain')
         strain_r = hv.Dimension('strain_c', label='Radial strain')
 
-        cir = hv.Points((self.mesh[1], self.mesh[0], self.gl_strain[peaks[0], 0, :]),
+        cir = hv.Points((self.mesh[1], -self.mesh[0], self.gl_strain[peaks[0], 0, :]),
                         vdims='strain') \
             .options(color='strain', cmap='viridis', marker='square', size=4,
                      title=f'Peak circumferential strain (time={peaks[0]})',
                      xaxis=None, yaxis=None, colorbar=True)
-        rad = hv.Points((self.mesh[1], self.mesh[0], self.gl_strain[peaks[1], 1, :]),
+        rad = hv.Points((self.mesh[1], -self.mesh[0], self.gl_strain[peaks[1], 1, :]),
                         vdims='strain') \
             .options(color='strain', cmap='viridis', marker='square', size=4,
                      title=f'Peak radial strain (time={peaks[1]})',

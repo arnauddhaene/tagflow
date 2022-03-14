@@ -1,5 +1,7 @@
 import builtins
 
+import numpy as np
+
 import streamlit as st
 
 import tagflow.home
@@ -7,6 +9,7 @@ import tagflow.reference
 import tagflow.strain
 
 from tagflow.src.predict import track
+from tagflow.state.state import SessionState, SessionStatus
 
 
 STANFORD_LOGO = 'https://disruptingafrica.com/images/4/42/Stanford_Logo.jpg'
@@ -37,23 +40,28 @@ def main():
     
     st.sidebar.write("""---""")
     
-    if st.session_state.reference is None:
+    ss = SessionState()
+    
+    # For debugging
+    st.sidebar.write(ss.status())
+    
+    if ss.status().value < SessionStatus.reference.value:
         st.sidebar.warning('Tracking reference not set.')
     else:
-        if st.session_state.points is None:
+        if ss.status() == SessionStatus.reference:
             st.sidebar.info('Tracking reference set, ready to compute deformations')
-            st.sidebar.button('Launch tracking', on_click=_track)
         else:
             st.sidebar.info('Recompute tracking')
-            st.sidebar.button('Launch tracking', on_click=_track)
-    
+        st.sidebar.button('Launch tracking', on_click=_track)
+        
     PAGES[selected_page].write()
 
 
 @st.cache(hash_funcs={builtins.complex: lambda _: None})
 def _track():
-    st.session_state.points = track(st.session_state.image, st.session_state.reference) \
-        .swapaxes(0, 2)
+    ss = SessionState()
+    deformation = track(ss.image.value(), ss.reference.value())
+    ss.deformation.update(np.rollaxis(deformation, 2))
 
 
 if __name__ == '__main__':

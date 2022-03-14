@@ -1,5 +1,6 @@
 from typing import Tuple
 from numpy.typing import ArrayLike
+import itertools
 
 import numpy as np
 import torch
@@ -10,10 +11,10 @@ import streamlit as st
 from .models.tracking.resnet2 import ResNet2
 
 
-def unpack_roi(roi: ArrayLike) -> Tuple[float, float, float]:
+def unpack_circle(circle: ArrayLike) -> Tuple[float, float, float]:
     # Handles type hinting to return Cx, Cy, and R
-    roi = np.array(roi)
-    return roi[0], roi[1], roi[2]
+    circle = np.array(circle)
+    return circle[0], circle[1], circle[2]
 
 
 def get_patch_path(ims, path, is_scaled=False, width=32):
@@ -94,3 +95,17 @@ def polar_to_cartesian(rho: float, theta: float) -> Tuple[float, float]:
         Tuple[float, float]: (x, y) cartesian coordinates.
     """
     return rho * np.cos(theta), rho * np.sin(theta)
+
+
+def generate_reference(
+    radii: Tuple[float, float],
+    circ: int = 24, radial: int = 7,
+) -> np.ndarray:
+    rho_m, rho_M = radii
+    rhos = np.linspace(rho_m, rho_M, radial)
+    thetas = np.linspace(-np.pi + (np.pi / circ), np.pi - (np.pi / circ), circ)
+    
+    polar_coords = np.array(list(itertools.product(rhos, thetas)))
+    r, t = polar_coords[:, 0], polar_coords[:, 1]
+    
+    return np.vstack([r * np.cos(t), r * np.sin(t)]).T

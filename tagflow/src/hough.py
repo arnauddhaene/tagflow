@@ -1,11 +1,9 @@
 from typing import Tuple
 
-import itertools
-
 import cv2
 import numpy as np
 
-from ..utils import polar_to_cartesian
+from ..utils import generate_reference
 
 
 def hough_circle(
@@ -27,14 +25,6 @@ def hough_circle(
 
     Cx, Cy, R = tuple(circles[0, 0])
 
-    # Same concept as Ferdian's paper - 128 totalx/ tracking points
-    rhos = np.linspace(R * 0.5, R * 0.9, radial)
-    thetas = np.linspace(-np.pi + (np.pi / circ), np.pi - (np.pi / circ), circ)
+    r0 = generate_reference((R * .5, R * .9), circ, radial)
 
-    polar_coords = np.array(list(itertools.product(rhos, thetas)))
-
-    r0 = np.array(list(map(
-        lambda pt: polar_to_cartesian(*pt) + np.array([Cx, Cy]),
-        polar_coords)))
-
-    return r0, circles[0, 0]
+    return r0 + np.array([Cx, Cy]), circles[0, 0]

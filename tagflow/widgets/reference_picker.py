@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 from .base import BaseWidget
+from ..state.state import SessionState
+from ..utils import unpack_circle
 
 
 class ReferencePicker(BaseWidget):
@@ -17,15 +19,15 @@ class ReferencePicker(BaseWidget):
         roi (np.ndarray): circle coordinates for outer ROI [Cx, Cy, R]
     """
     
-    def __init__(self, image: np.ndarray):
-        """Constructor
-
-        Args:
-            image (ArrayLike): the (T x W x H) input image
-        """
-        self.image: np.ndarray = image
+    def __init__(self):
+        """Constructor"""
+        ss = SessionState()
+        
+        self.image: np.ndarray = ss.image.value()
         self.ref_points: Optional[np.ndarray] = None
         self.roi: Optional[np.ndarray] = None
+        
+        self.load_reference()
     
     def reference(self):
         """This method should compute self.ref_points and self.roi
@@ -42,7 +44,8 @@ class ReferencePicker(BaseWidget):
     def display(self):
         """Display in streamlit application"""
 
-        self.reference()
+        if self.ref_points is None and self.roi is None:
+            self.reference()
         self.plot()
         
         save, clear = st.sidebar.columns(2)
@@ -60,7 +63,7 @@ class ReferencePicker(BaseWidget):
 
         ax.imshow(self.image[0], cmap='gray')
         if self.roi is not None:
-            ax.imshow(self.roi, alpha=.3)
+            ax.imshow(self.roi, cmap='RdBu', alpha=.3)
         if self.ref_points is not None:
             ax.scatter(self.ref_points[:, 0], self.ref_points[:, 1], 30, c='r', marker='x')
         ax.axis('off')
@@ -83,14 +86,27 @@ class ReferencePicker(BaseWidget):
         
         plt.xlim(max(0, xmin - 20), min(xmax + 20, width))
         plt.ylim(min(ymax + 20, height), max(0, ymin - 20))
+        
+    @staticmethod
+    def circle_mask(circle: np.ndarray, shape: Tuple[int, int], rho: float = 1.) -> np.ndarray:
+        cx, cy, radius = unpack_circle(circle)
+        x_idx, y_idx = [np.arange(0, dim) for dim in iter(shape)]
+        mask = (x_idx[:, np.newaxis] - cx) ** 2 + (y_idx[np.newaxis, :] - cy) ** 2 < (rho * radius) ** 2
+        return mask.T
+
+    def load_reference(self):
+        """Load reference tracking points from sessions state"""
+        ss = SessionState()
+        self.ref_points = ss.reference.value()
+        self.roi = ss.roi.value()
 
     def save_reference(self):
         """Save reference tracking points to sessions state"""
-        st.session_state.reference = self.ref_points
-        st.session_state.roi = self.roi
+        ss = SessionState()
+        ss.reference.update(self.ref_points)
+        ss.roi.update(self.roi)
         
     def clear_reference(self):
         """Clear reference tracking points from sessions state"""
-        st.session_state.reference = None
-        st.session_state.points = None
-        st.session_state.roi = None
+        ss = SessionState()
+        ss.clear(['reference', 'deformation', 'roi'])

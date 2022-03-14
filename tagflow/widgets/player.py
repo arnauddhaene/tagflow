@@ -7,29 +7,29 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 from .base import BaseWidget
+from ..state.state import SessionState, SessionStatus
 
 
 class Player(BaseWidget):
     """Video player for displaying time-wise tracking and cardiac motion
 
     Attributes:
-        image (ArrayLike): the (T x W x H) input image
-        points (ArrayLike): the (T x 2 x Npoints) tracked points
         Nt (int): time dimension
         speed (int): period is 1 / exp(speed)
         window (str): 'zoomed' or 'wide' view of the image
     """
     
-    def __init__(self, image: np.ndarray, points: np.ndarray = None):
-        """Constructor
-
-        Args:
-            image (np.ndarray): the (T x W x H) input image
-            points (np.ndarray): Tracked points (time x 2 x Npoints). Defaults to None.
-        """
-        self.image: np.ndarray = image
-        self.points: Optional[np.ndarray] = points
-        self.Nt: int = image.shape[0]
+    def __init__(self):
+        """Constructor"""
+        
+        ss = SessionState()
+        
+        if ss.status().value < SessionStatus.image.value:
+            raise ValueError(f'Session must contain image to display {self.__class__.__name__}')
+        
+        self.image: np.ndarray = ss.image.value()
+        self.points: Optional[np.ndarray] = ss.deformation.value()
+        self.Nt: int = self.image.shape[0]
         
         self.init_state()
         
@@ -51,8 +51,8 @@ class Player(BaseWidget):
         
         image = plt.imshow(self.image[st.session_state.frame], cmap='gray')
         if self.points is not None:
-            paths = plt.scatter(self.points[st.session_state.frame, 0, :],
-                                self.points[st.session_state.frame, 1, :],
+            paths = plt.scatter(self.points[st.session_state.frame, :, 0],
+                                self.points[st.session_state.frame, :, 1],
                                 15, c='r', marker='x')
 
         plt.axis('off')
@@ -67,7 +67,7 @@ class Player(BaseWidget):
             time.sleep(1 / np.exp(self.speed))
             image.set_data(self.image[st.session_state.frame])
             if self.points is not None:
-                paths.set_offsets(self.points[st.session_state.frame].swapaxes(0, 1))
+                paths.set_offsets(self.points[st.session_state.frame])
 
             player.pyplot(plt)
         
@@ -80,8 +80,8 @@ class Player(BaseWidget):
                 xmin, xmax = width * .25, width * .75
                 ymin, ymax = height * .25, height * .75
             else:
-                xmin, xmax = self.points[:, 0, :].min(), self.points[:, 0, :].max()
-                ymin, ymax = self.points[:, 1, :].min(), self.points[:, 1, :].max()
+                xmin, xmax = self.points[:, :, 0].min(), self.points[:, :, 0].max()
+                ymin, ymax = self.points[:, :, 1].min(), self.points[:, :, 1].max()
             
             plt.xlim(max(0, xmin - 20), min(xmax + 20, width))
             plt.ylim(min(ymax + 20, height), max(0, ymin - 20))
