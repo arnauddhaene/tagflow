@@ -1,14 +1,13 @@
 from typing import Dict
-from numpy.typing import ArrayLike
 
 import numpy as np
 import holoviews as hv
 
 import streamlit as st
 
-from ..src.rbf import RBF, get_principle_strain
 from .base import BaseWidget
 from ..state.state import SessionState
+from ..src.case import EvaluationCase
 
 
 hv.extension('bokeh')
@@ -41,87 +40,38 @@ class StrainEstimator(BaseWidget):
         ss = SessionState()
         
         self.image: np.ndarray = ss.image.value()
-        
-        points = ss.deformation.value()
-        self.cx, self.cy = points.mean(axis=(0, 1))
-        
-        self.mesh: np.ndarray = self.compute_mesh(ss.roi.value())
-        # Needs to be (2 x Npoints time) to be solved more efficiently
-        self.deformation: np.ndarray = np.swapaxes(points - np.array([self.cx, self.cy])[None, None, :], 0, 2)
-                                                           
-        self.Nt: int = self.deformation.shape[2]
-        self.Np: int = self.mesh.shape[1]
-
-        self.rbf: RBF = RBF(self.deformation[:, :, 0], **rbf_args)
-                
-    def compute_mesh(self, roi: np.ndarray) -> np.ndarray:
-        """Compute set of pixel coordinates in mesh from LV ROI and pseudo-wall estimation
-
-        Args:
-            roi (np.ndarray): Binary mask of LV myocardium (W x H).
-
-        Returns:
-            ArrayLike: Set of all pixel coordinates within LV wall mask (2 x Npoints) relative
-                to ROI centre
-        """
-        mask_idx = np.array(np.where(roi)).T
-        
-        return (mask_idx - np.array([self.cx, self.cy])).T
-    
-    def solve(self) -> ArrayLike:
-        """Solve Radial Bias Function interpolation
-
-        Returns:
-            ArrayLike: the computed strain (time x dir x point) with dirs circumferential,
-            radial, and longitudinal
-        """
-        
-        gl_strain = []
-
-        for time in range(self.Nt):
-            points_t = self.deformation[:, :, time]
-            deformation_grad = np.zeros([self.Np, 3, 3])
-            
-            for dim in range(2):
-                _ = self.rbf.solve(points_t[dim, :])
-                deformation_grad[:, dim, :2] = self.rbf.derivative(self.mesh).T
-                
-            gl_strain.append(get_principle_strain(self.mesh, deformation_grad))
-            
-        return np.array(gl_strain)
+        self.deformation: np.ndarray = ss.deformation.value()
         
     def display(self):
         """Display results in streamlit application"""
         ss = SessionState()
 
         # self.mesh.shape[1] != st.session_state.gl_strain.shape[2]
-        # if ss.strain.value() is None:
-        ss.strain.update(self.solve())
+        if ss.strain.value() is None:
+            self.mesh, strain = EvaluationCase._strain(ss.roi.value(), self.deformation)
+            ss.strain.update(strain)
 
+        self.mesh = np.array(np.where(ss.roi.value()))
         self.gl_strain = ss.strain.value()
         
         peaks = np.argmax(np.abs(self.gl_strain.mean(axis=2)), axis=0)
                 
-        times = list(range(self.Nt))
-
+        times = list(range(self.gl_strain.shape[0]))
+        
         time = hv.Dimension('time', label='Time', unit='s')
         strain_c = hv.Dimension('strain_c', label='Circumferential strain')
         strain_r = hv.Dimension('strain_c', label='Radial strain')
 
         cir = hv.Points((self.mesh[1], -self.mesh[0], self.gl_strain[peaks[0], 0, :]),
-                        vdims='strain') \
-            .options(color='strain', cmap='viridis', marker='square', size=4,
-                     title=f'Peak circumferential strain (time={peaks[0]})',
-                     xaxis=None, yaxis=None, colorbar=True)
+                        vdims='strain', group='Peak circumferential strain', label=f'(t={peaks[0]}')
         rad = hv.Points((self.mesh[1], -self.mesh[0], self.gl_strain[peaks[1], 1, :]),
-                        vdims='strain') \
-            .options(color='strain', cmap='viridis', marker='square', size=4,
-                     title=f'Peak radial strain (time={peaks[1]})',
-                     xaxis=None, yaxis=None, colorbar=True)
+                        vdims='strain', group='Peak radial strain', label=f'(t={peaks[1]}')
 
-        cir_t = hv.Curve((times, self.gl_strain.mean(axis=2)[:, 0]), time, strain_c) \
-            .opts(ylabel=r"$$E_{cc}$$", title='Circumferential strain in time')
-        rad_t = hv.Curve((times, self.gl_strain.mean(axis=2)[:, 1]), time, strain_r) \
-            .opts(ylabel=r"$$E_{rr}$$", title='Radial strain in time')
+        cir_t = hv.Curve((times, self.gl_strain.mean(axis=2)[:, 0]), time, strain_c, label='Circumferential')
+        rad_t = hv.Curve((times, self.gl_strain.mean(axis=2)[:, 1]), time, strain_r, label='Radial')
+            
+        fig = (cir + rad).opts(hv.opts.Points(color='strain', cmap='viridis', marker='square',
+                                              size=4, colorbar=True, xaxis=None, yaxis=None)) \
+            + (cir_t * rad_t).opts(ylabel=r"$$E$$", legend_position='top')
 
-        st.bokeh_chart(hv.render((cir + cir_t + rad + rad_t).cols(2), backend='bokeh'))
+        st.bokeh_chart(hv.render(fig.cols(3), backend='bokeh'))

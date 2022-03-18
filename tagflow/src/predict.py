@@ -9,12 +9,14 @@ import torch.nn.functional as F
 
 from ..utils import load_model, get_patch_path
 from ..models.segmentation.unet import UNet
+from ..models.tracking.resnet2 import ResNet2
+
 
 TRACK_MODEL_PATH = Path(__file__).parent.parent / 'network_saves/resnet2_grid_tracking.pt'
 ROI_MODEL_PATH = Path(__file__).parent.parent / 'network_saves/model_cine_tag_v1_sd.pt'
 
 
-def track(imt: np.ndarray, r0: np.ndarray) -> np.ndarray:
+def track(imt: np.ndarray, r0: np.ndarray, in_st: bool = True, verbose: int = 0) -> np.ndarray:
     
     # Number of reference tracking points
     N = r0.shape[0]
@@ -32,12 +34,21 @@ def track(imt: np.ndarray, r0: np.ndarray) -> np.ndarray:
     N_batches = int(np.ceil(N / batch_size))
 
     device = torch.device('cpu')
-    model = load_model(TRACK_MODEL_PATH, device=device)
+    if in_st:
+        model = load_model(TRACK_MODEL_PATH, device=device)
+    else:
+        kwargs = dict(do_coordconv=True, fc_shortcut=False)
+        model = ResNet2([2, 2, 2, 2], **kwargs)
+        model.load_state_dict(
+            torch.load(TRACK_MODEL_PATH, map_location=device)
+        )
+
+        model = model.to(device)
 
     _y1 = []
 
     with torch.no_grad():
-        for i in tqdm(range(N_batches)):
+        for i in tqdm(range(N_batches), disable=(verbose < 1)):
             x = X[i * batch_size:(i + 1) * batch_size]
             x = torch.from_numpy(x).to(device)
             y_pred = model(x)

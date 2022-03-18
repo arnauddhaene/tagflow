@@ -14,7 +14,7 @@ from tagflow.state.state import SessionState, SessionStatus
 
 STANFORD_LOGO = 'https://disruptingafrica.com/images/4/42/Stanford_Logo.jpg'
 
-st.set_page_config(layout="centered", page_title="tagflow", page_icon=STANFORD_LOGO)
+st.set_page_config(layout="wide", page_title="tagflow", page_icon=STANFORD_LOGO)
 
 PAGES = {
     'Home': tagflow.home,

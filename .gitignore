@@ -9,6 +9,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Jupyter notebooks
+notebooks/
+
+# Unrelated testing files
+drawing.py
+gabor.py
+routes.py
+video.py
 
 
 # C extensions
