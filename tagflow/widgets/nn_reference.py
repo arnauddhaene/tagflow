@@ -53,4 +53,4 @@ class NeuralReference(ReferencePicker):
         
         self.roi = (blobs == blob_index)
                
-        self.ref_points = EvaluationCase._reference(self.roi)
+        self.ref_points = EvaluationCase._reference(np.array(self.roi))

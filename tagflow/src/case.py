@@ -15,7 +15,6 @@ import torch.nn.functional as F
 from ..src.rbf import RBF, get_principle_strain
 from ..src.predict import track
 from ..utils import generate_reference
-from ..models.segmentation.unet import UNet
 
 
 class EvaluationCase():
@@ -23,19 +22,20 @@ class EvaluationCase():
     def __init__(
         self,
         image: np.ndarray = None, video: np.ndarray = None,
-        mask: np.ndarray = None, path: str = None, recompute: bool = False
+        mask: np.ndarray = None, model: nn.Module = None,
+        path: str = None, recompute: bool = False,
     ):
          
         if (path is not None and Path(path).is_file()) and not recompute:
             self.load(path)
         else:
-            assert image is not None and video is not None and mask is not None
+            assert image is not None and video is not None and mask is not None and model is not None
             
             self.image = np.array(image)
             self.video = np.array(video)
             self.mask = np.array(mask)
             
-            self.pred = self._segment(torch.Tensor(self.image))
+            self.pred = self._segment(model, torch.Tensor(self.image))
             
             self.deformation_gt = track(
                 self.video, self._reference(self.mask), in_st=False
@@ -102,14 +102,7 @@ class EvaluationCase():
         return mape_cir, mape_rad
 
     @staticmethod
-    def _segment(image: torch.Tensor) -> np.ndarray:
-        
-        model_path = Path('../tagflow/network_saves/model_cine_tag_v1_sd.pt')
-        model: nn.Module = UNet(n_channels=1, n_classes=4, bilinear=True).double()
-        # Load old saved version of the model as a state dictionary
-        saved_model_sd = torch.load(model_path)
-        # Extract UNet if saved model is parallelized
-        model.load_state_dict(saved_model_sd)
+    def _segment(model: nn.Module, image: torch.Tensor) -> np.ndarray:
 
         inp: torch.Tensor = image.unsqueeze(0).double().clone()
         out: torch.Tensor = model(inp)
@@ -124,9 +117,7 @@ class EvaluationCase():
 
     @staticmethod
     def _reference(mask: np.ndarray) -> np.ndarray:
-        
-        mask = np.array(mask)
-        
+                
         points = np.array(np.where(mask)).T
         centre = (points.min(axis=0) + points.max(axis=0)) / 2.
         radius = np.abs(np.linalg.norm(centre - points, axis=1))
@@ -134,7 +125,8 @@ class EvaluationCase():
         r0 = generate_reference((radius.min(), radius.max(),)) + np.array(centre)
 
         # Interpolate the mask
-        x, y = np.linspace(0, 255, 256), np.linspace(0, 255, 256)
+        m, n = mask.shape
+        x, y = np.linspace(0, n - 1, n), np.linspace(0, m - 1, m)
         p = interpolate.interp2d(x, y, mask, kind='cubic')
         # Select only the reference points present within the mask
         # Meaning that interpolated value at that point should be > .5
