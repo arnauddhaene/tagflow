@@ -33,11 +33,6 @@ def load_sample():
     ss.image.update(imt)
     ss.reference.update(r0)
     ss.deformation.update(y1r)
-    
-    # centre = r0.mean(axis=0).T
-    # radius = 1.1 * np.abs(np.linalg.norm(centre - r0, axis=1)).max()
-
-    # st.session_state.roi = np.array([*centre, radius])
 
 
 @st.cache

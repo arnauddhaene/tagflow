@@ -36,14 +36,14 @@ def main():
     st.sidebar.title('tagflow Navigation')
     st.sidebar.write('Automated myocardial strain estimation using tagged MR images')
     
-    selected_page = st.sidebar.radio('Go to', PAGES.keys())
+    selected_page = st.sidebar.radio('Go to', PAGES.keys(), key='page')
     
     st.sidebar.write("""---""")
     
     ss = SessionState()
     
     # For debugging
-    st.sidebar.write(ss.status())
+    # st.sidebar.write(ss.status())
     
     if ss.status().value < SessionStatus.reference.value:
         st.sidebar.warning('Tracking reference not set.')
@@ -62,6 +62,8 @@ def _track():
     ss = SessionState()
     deformation = track(ss.image.value(), ss.reference.value())
     ss.deformation.update(np.rollaxis(deformation, 2))
+    # Switch to home page once deformation has been predicted
+    st.session_state.page = 'Home'
 
 
 if __name__ == '__main__':

@@ -44,16 +44,16 @@ class ReferencePicker(BaseWidget):
     def display(self):
         """Display in streamlit application"""
 
-        if self.ref_points is None and self.roi is None:
-            self.reference()
-        self.plot()
-        
         save, clear = st.sidebar.columns(2)
 
         save.button('Save reference', on_click=self.save_reference)
             
-        if st.session_state.reference is not None:
+        if SessionState().reference.value() is not None:
             clear.button('Clear reference', on_click=self.clear_reference)
+        
+        if self.ref_points is None and self.roi is None:
+            self.reference()
+        self.plot()
 
     def plot(self):
         """Plots the input image's first timepoint and the compute reference tracking points."""
