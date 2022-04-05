@@ -33,13 +33,11 @@ class StrainEstimator(BaseWidget):
         Args:
             points (ArrayLike): the (time x Npoints x 2) tracked points
             roi (ArrayLike): circle coordinates for outer ROI [Cx, Cy, R]
-            image (ArrayLike): image
             rbf_args (Dict[str, float], optional): Args for RBF instance.
                 Defaults to dict(const=12, reg=1e-3).
         """
         ss = SessionState()
         
-        self.image: np.ndarray = ss.image.value()
         self.deformation: np.ndarray = ss.deformation.value()
         
     def display(self):

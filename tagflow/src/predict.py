@@ -13,7 +13,7 @@ from ..models.tracking.resnet2 import ResNet2
 
 
 TRACK_MODEL_PATH = Path(__file__).parent.parent / 'network_saves/resnet2_grid_tracking.pt'
-ROI_MODEL_PATH = Path(__file__).parent.parent / 'network_saves/model_cine_tag_v2_tri_loss_sd.pt'
+ROI_MODEL_PATH = Path(__file__).parent.parent / 'network_saves/model_cine_tag_only_myo_v0_finetuned_dmd_v3.pt'
 
 
 def track(imt: np.ndarray, r0: np.ndarray, in_st: bool = True, verbose: int = 0) -> np.ndarray:
@@ -44,6 +44,8 @@ def track(imt: np.ndarray, r0: np.ndarray, in_st: bool = True, verbose: int = 0)
         )
 
         model = model.to(device)
+        
+    model.eval()
 
     _y1 = []
 
@@ -65,11 +67,13 @@ def segment(imt: torch.Tensor) -> torch.Tensor:
     if len(imt.shape) != 4:
         raise ValueError(f'Expects 4 dimensions: B, C, W, H. Got {imt.shape}')
 
-    model: nn.Module = UNet(n_channels=1, n_classes=4, bilinear=True).double()
+    model: nn.Module = UNet(n_channels=1, n_classes=2, bilinear=True).double()
     # Load old saved version of the model as a state dictionary
     saved_model_sd: OrderedDict = torch.load(ROI_MODEL_PATH, map_location='cpu')
     # Extract UNet if saved model is parallelized
     model.load_state_dict(saved_model_sd)
+    
+    # model.eval()
 
     out: torch.Tensor = model(imt)
     return F.softmax(out, dim=1).argmax(dim=1).detach().numpy()

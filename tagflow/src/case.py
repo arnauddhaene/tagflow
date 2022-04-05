@@ -24,6 +24,7 @@ class EvaluationCase():
         image: np.ndarray = None, video: np.ndarray = None,
         mask: np.ndarray = None, model: nn.Module = None,
         path: str = None, recompute: bool = False,
+        target_class: int = 2
     ):
          
         if (path is not None and Path(path).is_file()) and not recompute:
@@ -35,7 +36,7 @@ class EvaluationCase():
             self.video = np.array(video)
             self.mask = np.array(mask)
             
-            self.pred = self._segment(model, torch.Tensor(self.image))
+            self.pred = self._segment(model, torch.Tensor(self.image), target_class)
             
             self.deformation_gt = track(
                 self.video, self._reference(self.mask), in_st=False
@@ -78,7 +79,7 @@ class EvaluationCase():
         assert self.mask.shape == self.pred.shape
         
         return dc(self.pred, self.mask)
-    
+        
     def mape(self) -> Tuple[float, float]:
         if self.strain_gt is None or self.strain_nn is None:
             raise ValueError('Either ground truth or predicted strain is None.')
@@ -102,12 +103,14 @@ class EvaluationCase():
         return mape_cir, mape_rad
 
     @staticmethod
-    def _segment(model: nn.Module, image: torch.Tensor) -> np.ndarray:
+    def _segment(model: nn.Module, image: torch.Tensor, target_class: int = 2) -> np.ndarray:
+
+        model.eval()
 
         inp: torch.Tensor = image.unsqueeze(0).double().clone()
         out: torch.Tensor = model(inp)
         pred: torch.Tensor = F.softmax(out, dim=1).argmax(dim=1).detach()[0]
-        pred = (pred == 2)
+        pred = (pred == target_class)
         pred = morphology.binary_closing(pred)
         blobs, num = measure.label(pred, background=0, return_num=True)
         sizes = [(blobs == i).sum() for i in range(1, num + 1)]
