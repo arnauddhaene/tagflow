@@ -15,7 +15,7 @@ from tagflow.data.datasets import DMDTimeDataset
 
 @click.command()
 @click.option('--name', default='dmd_eval', help="Folder name for saving evaluation files.")
-@click.option('--model-name', default='model_cine_tag_only_myo_v0_finetuned_dmd_v3.pt', help="Model name")
+@click.option('--model-name', default='model_cine_tag_only_myo_v1_finetuned_dmd_v0.pt', help="Model name")
 def run(name, model_name):
     
     model_path = Path('tagflow/network_saves') / model_name

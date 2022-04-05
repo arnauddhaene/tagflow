@@ -108,7 +108,7 @@ class EvaluationCase():
         model.eval()
 
         inp: torch.Tensor = image.unsqueeze(0).double().clone()
-        out: torch.Tensor = model(inp)
+        out, _, _ = model(inp)
         pred: torch.Tensor = F.softmax(out, dim=1).argmax(dim=1).detach()[0]
         pred = (pred == target_class)
         pred = morphology.binary_closing(pred)

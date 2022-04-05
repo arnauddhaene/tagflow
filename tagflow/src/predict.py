@@ -75,5 +75,5 @@ def segment(imt: torch.Tensor) -> torch.Tensor:
     
     # model.eval()
 
-    out: torch.Tensor = model(imt)
+    out = model(imt)
     return F.softmax(out, dim=1).argmax(dim=1).detach().numpy()
