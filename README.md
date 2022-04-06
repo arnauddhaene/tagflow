@@ -35,6 +35,14 @@ docker run ghcr.io/arnauddhaene/tagflow:main
 
 You can now view and use the web-app on ```http://localhost:8501/```
 
+### Local port forwarding
+
+Streamlit is automatically set to 8501. Forward it to whatever you like.
+
+```bash
+ssh -L local_port:network:remote_port ultron
+```
+
 ### Code structure
 
 The folder structure should be as followed:
