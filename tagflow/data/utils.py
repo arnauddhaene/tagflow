@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Dict, Optional
 
 import pydicom
 
@@ -80,7 +80,7 @@ class Slice:
         self.slice_location = path.name
         if roi_path.is_file():
             rois = np.load(roi_path)
-            self.roi = {array_key: rois[array_key] for array_key in list(rois.keys())}
+            self.roi: Optional[Dict] = {array_key: rois[array_key] for array_key in list(rois.keys())}
             self.mask = {}
             for _roi in ['pts_interp_outer', 'pts_interp_inner']:
                 if self.roi[_roi] is not None:

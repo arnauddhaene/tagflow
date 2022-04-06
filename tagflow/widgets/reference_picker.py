@@ -7,6 +7,9 @@ from PIL import Image, ImageEnhance
 
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas  # type:ignore
+from scipy import spatial, interpolate
+from skimage import draw
+
 
 from .base import BaseWidget
 from ..state.state import SessionState
@@ -62,7 +65,6 @@ class ReferencePicker(BaseWidget):
 
         if self.ref_points is None and self.roi is None:
             self.reference()
-            self.save_reference()
         
         self.canvas = st_canvas(
             fill_color='#FF0000', stroke_color='#FF0000',
@@ -173,13 +175,8 @@ class ReferencePicker(BaseWidget):
                 self.ref_points = np.array([self.ymin, self.xmin]) \
                     + (lt + offset) / self.stretch
                 
-                centre = self.ref_points.mean(axis=0).T
-                radius = 1.1 * np.abs(np.linalg.norm(centre - self.ref_points, axis=1)).max()
-                
-                circle = np.array([*centre, radius])
                 shape = self.image.shape[1:]
-                self.roi = self.circle_mask(circle, shape, 0.9) ^ \
-                    self.circle_mask(circle, shape, 0.5)
+                self.roi = ReferencePicker.compute_roi(self.ref_points, shape)
         
         ss = SessionState()
         ss.reference.update(self.ref_points)
@@ -189,3 +186,51 @@ class ReferencePicker(BaseWidget):
         """Clear reference tracking points from sessions state"""
         ss = SessionState()
         ss.clear(['reference', 'deformation', 'roi'])
+
+    @staticmethod
+    def compute_roi(reference: np.ndarray, size: Tuple[int, int]) -> Tuple[np.ndarray, np.ndarray]:
+        
+        # Outer hull
+        outer_hull = spatial.ConvexHull(reference)
+        
+        # Inner hull by finding the Convex Hull of inverted radius space
+        t0 = reference - reference.mean(axis=0)
+        x, y = t0[:, 0], t0[:, 1]
+        t0 = np.array([np.sqrt(x ** 2 + y ** 2), np.arctan2(y, x)]).T
+        t0[:, 0] = 1 / (t0[:, 0] + 1e-12)
+        r, t = t0[:, 0], t0[:, 1]
+        t0 = np.array([r * np.sin(t), r * np.cos(t)]).T
+
+        inner_hull = spatial.ConvexHull(t0)
+        
+        inner_pts = ReferencePicker.interp_pts(reference[inner_hull.vertices])
+        outer_pts = ReferencePicker.interp_pts(reference[outer_hull.vertices])
+                
+        inner_pg = draw.polygon(inner_pts[1, :], inner_pts[0, :], size)
+        outer_pg = draw.polygon(outer_pts[1, :], outer_pts[0, :], size)
+        
+        inner_mask = draw.polygon2mask(size, np.array(inner_pg).T)
+        outer_mask = draw.polygon2mask(size, np.array(outer_pg).T)
+        
+        return outer_mask ^ inner_mask
+        
+    @staticmethod
+    def interp_pts(points: np.ndarray) -> np.ndarray:
+        # From Mike Loecher
+        x, y = points[:, 0], points[:, 1]
+        x, y = np.hstack((x, x[0])), np.hstack((y, y[0]))
+
+        dxy = np.hypot(np.diff(x), np.diff(y))
+
+        tt = np.hstack((0, np.cumsum(dxy)))
+        tt /= tt.max()
+
+        spl_x = interpolate.splrep(tt, x, k=5, s=0, per=True)
+        spl_y = interpolate.splrep(tt, y, k=5, s=0, per=True)
+
+        tt_new = np.linspace(0, 1, 100)
+
+        x_out = interpolate.splev(tt_new, spl_x)
+        y_out = interpolate.splev(tt_new, spl_y)
+        
+        return np.array([x_out, y_out])

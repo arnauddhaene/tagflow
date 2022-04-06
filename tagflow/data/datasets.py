@@ -253,5 +253,3 @@ class DMDTimeDataset(TensorDataset):
             transforms.ToTensor(),
             transforms.Resize((256, 256))
         ])
-
-    

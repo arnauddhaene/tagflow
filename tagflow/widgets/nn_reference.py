@@ -52,5 +52,6 @@ class NeuralReference(ReferencePicker):
         blob_index = np.argmax(sizes) + 1  # Fetch index of largest blob
         
         self.roi = (blobs == blob_index)
-               
         self.ref_points = EvaluationCase._reference(np.array(self.roi))
+        
+        self.save_reference()
