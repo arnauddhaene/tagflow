@@ -61,9 +61,9 @@ class StrainEstimator(BaseWidget):
         strain_r = hv.Dimension('strain_c', label='Radial strain')
 
         cir = hv.Points((self.mesh[1], -self.mesh[0], self.gl_strain[peaks[0], 0, :]),
-                        vdims='strain', group='Peak circumferential strain', label=f'(t={peaks[0]}')
+                        vdims='strain', group='Peak circumferential strain', label=f'(t={peaks[0]})')
         rad = hv.Points((self.mesh[1], -self.mesh[0], self.gl_strain[peaks[1], 1, :]),
-                        vdims='strain', group='Peak radial strain', label=f'(t={peaks[1]}')
+                        vdims='strain', group='Peak radial strain', label=f'(t={peaks[1]})')
 
         cir_t = hv.Curve((times, self.gl_strain.mean(axis=2)[:, 0]), time, strain_c, label='Circumferential')
         rad_t = hv.Curve((times, self.gl_strain.mean(axis=2)[:, 1]), time, strain_r, label='Radial')
