@@ -1,9 +1,15 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, Any
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+from PIL import Image, ImageEnhance
 
 import streamlit as st
+from streamlit_drawable_canvas import st_canvas  # type:ignore
+from scipy import spatial, interpolate
+from skimage import draw
+
 
 from .base import BaseWidget
 from ..state.state import SessionState
@@ -22,6 +28,9 @@ class ReferencePicker(BaseWidget):
     def __init__(self):
         """Constructor"""
         ss = SessionState()
+        
+        self.canvas = None
+        self.stretch = 6
         
         self.image: np.ndarray = ss.image.value()
         self.ref_points: Optional[np.ndarray] = None
@@ -44,6 +53,7 @@ class ReferencePicker(BaseWidget):
     def display(self):
         """Display in streamlit application"""
 
+        mode = st.sidebar.selectbox('Drawing mode', ['transform', 'point'])
         save, clear = st.sidebar.columns(2)
 
         save.button('Save reference', on_click=self.save_reference)
@@ -51,26 +61,72 @@ class ReferencePicker(BaseWidget):
         if SessionState().reference.value() is not None:
             clear.button('Clear reference', on_click=self.clear_reference)
         
+        bg_image: Image = self.enhance()
+
         if self.ref_points is None and self.roi is None:
             self.reference()
-        self.plot()
-
-    def plot(self):
-        """Plots the input image's first timepoint and the compute reference tracking points."""
         
-        # Plot the points we are tracking
-        fig, ax = plt.subplots(1, figsize=(12, 8))
+        self.canvas = st_canvas(
+            fill_color='#FF0000', stroke_color='#FF0000',
+            stroke_width=1., point_display_radius=3., drawing_mode=mode,
+            background_image=bg_image, update_streamlit=True,
+            height=self.stretch * (self.xmax - self.xmin),
+            width=self.stretch * (self.ymax - self.ymin),
+            initial_drawing=self.fetch_drawed_annot()
+        )
+        
+    def enhance(self) -> Image:
+        """Preprocessing pipeline to edit canvas background for better annotation
+        
+        Modifies:
+            xmin, xmax, ymin, ymax (int): coordinates of zoomed in image view
 
-        ax.imshow(self.image[0], cmap='gray')
+        Returns:
+            PIL.Image: Image to use as background for drawable canvas
+        """
+        
+        xdim, ydim = tuple(self.image.shape[1:])
+        
+        self.xmin, self.xmax = tuple(map(int, (xdim * .30, xdim * .65,)))
+        self.ymin, self.ymax = tuple(map(int, (ydim * .25, ydim * .75,)))
+        
+        ct, bn = st.sidebar.columns(2)
+        
+        contrast = ct.slider('Contrast', .5, 5., 1.25)
+        brightness = bn.slider('Brightness', .5, 5., 1.25)
+        
+        processed = Image.fromarray(self.image[0, self.xmin:self.xmax, self.ymin:self.ymax])
+        processed = processed.convert(mode='RGB')
+
+        processed = ImageEnhance.Contrast(processed).enhance(contrast)
+        processed = ImageEnhance.Brightness(processed).enhance(brightness)
+        
+        # Add mask of roi
         if self.roi is not None:
-            ax.imshow(self.roi, cmap='RdBu', alpha=.3)
+            mask = (self.roi[self.xmin:self.xmax, self.ymin:self.ymax] * 85)
+            mask = mask.astype(np.uint8)
+            mask = Image.fromarray(mask, mode='L')
+            
+            blue = Image.new('RGB', mask.size, (128, 0, 128))
+            
+            processed = Image.composite(blue, processed, mask)
+        
+        return processed
+    
+    def fetch_drawed_annot(self) -> Dict[str, Any]:
+        
         if self.ref_points is not None:
-            ax.scatter(self.ref_points[:, 0], self.ref_points[:, 1], 30, c='r', marker='x')
-        ax.axis('off')
-        
-        self.zoom_in()
-        
-        st.pyplot(fig)
+            # use offset and ymin, xmin to push coords into canvas space
+            offset = np.array([3.5, 0.0])
+            ref = (self.ref_points - np.array([self.ymin, self.xmin])) * self.stretch - offset
+            
+            return dict(objects=[
+                dict(
+                    type='circle', originX='left', originY='center',
+                    left=left, top=top, width=6, height=6, fill='#FF0000', stroke='#FF0000',
+                    strokeWidth=1, angle=0, paintFirst='fill', radius=3
+                ) for left, top in ref
+            ])
 
     def zoom_in(self):
         """Zooms in on the plotted image based on center or padded reference tracking points."""
@@ -102,6 +158,26 @@ class ReferencePicker(BaseWidget):
 
     def save_reference(self):
         """Save reference tracking points to sessions state"""
+        if self.canvas is not None and self.canvas.json_data is not None:
+            self.drawed_annot = self.canvas.json_data
+            objects = pd.json_normalize(self.drawed_annot['objects'])
+            # convert object columns to str for reading and processing
+            for col in objects.select_dtypes(include=['object']).columns:
+                objects[col] = objects[col].astype('str')
+                
+            if len(objects) > 0:
+                lt = np.array(objects[['left', 'top']])
+                r = np.array(objects['radius'])  # radius
+                sw = np.array(objects['strokeWidth']) / 2.  # half of strokeWidth
+                
+                offset = np.vstack([r + sw, np.zeros_like(r)]).T
+                                                
+                self.ref_points = np.array([self.ymin, self.xmin]) \
+                    + (lt + offset) / self.stretch
+                
+                shape = self.image.shape[1:]
+                self.roi = ReferencePicker.compute_roi(self.ref_points, shape)
+        
         ss = SessionState()
         ss.reference.update(self.ref_points)
         ss.roi.update(self.roi)
@@ -110,3 +186,51 @@ class ReferencePicker(BaseWidget):
         """Clear reference tracking points from sessions state"""
         ss = SessionState()
         ss.clear(['reference', 'deformation', 'roi'])
+
+    @staticmethod
+    def compute_roi(reference: np.ndarray, size: Tuple[int, int]) -> Tuple[np.ndarray, np.ndarray]:
+        
+        # Outer hull
+        outer_hull = spatial.ConvexHull(reference)
+        
+        # Inner hull by finding the Convex Hull of inverted radius space
+        t0 = reference - reference.mean(axis=0)
+        x, y = t0[:, 0], t0[:, 1]
+        t0 = np.array([np.sqrt(x ** 2 + y ** 2), np.arctan2(y, x)]).T
+        t0[:, 0] = 1 / (t0[:, 0] + 1e-12)
+        r, t = t0[:, 0], t0[:, 1]
+        t0 = np.array([r * np.sin(t), r * np.cos(t)]).T
+
+        inner_hull = spatial.ConvexHull(t0)
+        
+        inner_pts = ReferencePicker.interp_pts(reference[inner_hull.vertices])
+        outer_pts = ReferencePicker.interp_pts(reference[outer_hull.vertices])
+                
+        inner_pg = draw.polygon(inner_pts[1, :], inner_pts[0, :], size)
+        outer_pg = draw.polygon(outer_pts[1, :], outer_pts[0, :], size)
+        
+        inner_mask = draw.polygon2mask(size, np.array(inner_pg).T)
+        outer_mask = draw.polygon2mask(size, np.array(outer_pg).T)
+        
+        return outer_mask ^ inner_mask
+        
+    @staticmethod
+    def interp_pts(points: np.ndarray) -> np.ndarray:
+        # From Mike Loecher
+        x, y = points[:, 0], points[:, 1]
+        x, y = np.hstack((x, x[0])), np.hstack((y, y[0]))
+
+        dxy = np.hypot(np.diff(x), np.diff(y))
+
+        tt = np.hstack((0, np.cumsum(dxy)))
+        tt /= tt.max()
+
+        spl_x = interpolate.splrep(tt, x, k=5, s=0, per=True)
+        spl_y = interpolate.splrep(tt, y, k=5, s=0, per=True)
+
+        tt_new = np.linspace(0, 1, 100)
+
+        x_out = interpolate.splev(tt_new, spl_x)
+        y_out = interpolate.splev(tt_new, spl_y)
+        
+        return np.array([x_out, y_out])

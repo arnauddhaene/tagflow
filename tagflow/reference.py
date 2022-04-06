@@ -1,7 +1,6 @@
 import streamlit as st
 
 from .widgets.hough_reference import HoughReference
-from .widgets.manual_reference import ManualReference
 from .widgets.nn_reference import NeuralReference
 from .state.state import SessionState
 
@@ -11,12 +10,10 @@ def write():
 
     if ss.image.value() is not None:
         
-        annot = st.sidebar.selectbox('Annotation', ['Neural Network', 'Hough Transform', 'Manual'])
+        annot = st.sidebar.selectbox('Annotation', ['Neural Network', 'Hough Transform'])
         
         if annot == 'Hough Transform':
             HoughReference().display()
-        elif annot == 'Manual':
-            ManualReference().display()
         elif annot == 'Neural Network':
             NeuralReference().display()
         
