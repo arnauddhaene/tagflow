@@ -52,15 +52,16 @@ def main():
             st.sidebar.info('Tracking reference set, ready to compute deformations')
         else:
             st.sidebar.info('Recompute tracking')
-        st.sidebar.button('Launch tracking', on_click=_track)
+        st.sidebar.button('Launch tracking', on_click=_track, args=(ss.reference.value(),))
         
     PAGES[selected_page].write()
 
 
 @st.cache(hash_funcs={builtins.complex: lambda _: None})
-def _track():
+def _track(reference: np.ndarray):
+    # Receives reference so that Streamlit knows to rerun _track when reference changes
     ss = SessionState()
-    deformation = track(ss.image.value(), ss.reference.value())
+    deformation = track(ss.image.value(), reference)
     ss.deformation.update(np.rollaxis(deformation, 2))
     # Switch to home page once deformation has been predicted
     st.session_state.page = 'Home'

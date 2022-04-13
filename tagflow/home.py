@@ -60,7 +60,7 @@ def write():
             ss.image.update(
                 np.array(list(zip(*sorted(res, key=lambda item: item[0])))[1])
             )
-                        
+
             Player().display()
 
     else:
