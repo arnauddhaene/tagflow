@@ -2,6 +2,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 import pandas as pd
+import numpy as np
 
 import click
 
@@ -44,6 +45,9 @@ def run(name, model_name):
         
         ec = EvaluationCase(image, video, mask, model, recompute=True, target_class=1,
                             path=f'../dmd_eval/{name}/scan_{idx}_{slic}.npz')
+        
+        if np.sum(ec.pred) == 0:
+            continue
         
         mape_circ, mape_radial = ec.mape()
         mae_circ, mae_radial = ec.mae()
