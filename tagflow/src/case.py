@@ -4,9 +4,10 @@ from pathlib import Path
 import numpy as np
 from skimage import morphology, measure
 from medpy.metric.binary import dc
-from sklearn import metrics
+from sklearn.metrics import mean_absolute_percentage_error, mean_absolute_error
 import holoviews as hv
 from scipy import interpolate
+from monai.metrics import compute_hausdorff_distance
 
 import torch
 from torch import nn
@@ -38,18 +39,21 @@ class EvaluationCase():
             
             self.pred = self._segment(model, torch.Tensor(self.image), target_class)
             
-            self.deformation_gt = track(
-                self.video, self._reference(self.mask), in_st=False
-            )
-            self.deformation_nn = track(
-                self.video, self._reference(self.pred), in_st=False
-            )
-            
-            self.mesh_gt, self.strain_gt = self._strain(self.mask, np.rollaxis(self.deformation_gt, 2))
-            self.mesh_nn, self.strain_nn = self._strain(self.pred, np.rollaxis(self.deformation_nn, 2))
-            
-            if path is not None:
-                self.save(path)
+            if np.sum(self.pred) == 0:
+                print('No mask predicted for case.')
+            else:
+                self.deformation_gt = track(
+                    self.video, self._reference(self.mask), in_st=False
+                )
+                self.deformation_nn = track(
+                    self.video, self._reference(self.pred), in_st=False
+                )
+                
+                self.mesh_gt, self.strain_gt = self._strain(self.mask, np.rollaxis(self.deformation_gt, 2))
+                self.mesh_nn, self.strain_nn = self._strain(self.pred, np.rollaxis(self.deformation_nn, 2))
+                
+                if path is not None:
+                    self.save(path)
         
     def load(self, path: str):
         saved_arrays = np.load(path)
@@ -79,14 +83,25 @@ class EvaluationCase():
         assert self.mask.shape == self.pred.shape
         
         return dc(self.pred, self.mask)
+    
+    def hausdorff_distance(self) -> float:
+        if self.mask is None or self.pred is None:
+            raise ValueError('Either ground truth of predicted mask is None.')
+        
+        assert self.mask.shape == self.pred.shape
+        
+        return compute_hausdorff_distance(
+            self.mask[None, None, :, :],
+            self.pred[None, None, :, :]
+        ).item()
         
     def mape(self) -> Tuple[float, float]:
         if self.strain_gt is None or self.strain_nn is None:
             raise ValueError('Either ground truth or predicted strain is None.')
         
-        mape_cir = metrics.mean_absolute_percentage_error(
+        mape_cir = mean_absolute_percentage_error(
             self.strain_gt.mean(axis=2)[:, 0], self.strain_nn.mean(axis=2)[:, 0])
-        mape_rad = metrics.mean_absolute_percentage_error(
+        mape_rad = mean_absolute_percentage_error(
             self.strain_gt.mean(axis=2)[:, 1], self.strain_nn.mean(axis=2)[:, 1])
 
         return mape_cir, mape_rad
@@ -95,9 +110,9 @@ class EvaluationCase():
         if self.strain_gt is None or self.strain_nn is None:
             raise ValueError('Either ground truth or predicted strain is None.')
         
-        mape_cir = metrics.mean_absolute_error(
+        mape_cir = mean_absolute_error(
             self.strain_gt.mean(axis=2)[:, 0], self.strain_nn.mean(axis=2)[:, 0])
-        mape_rad = metrics.mean_absolute_error(
+        mape_rad = mean_absolute_error(
             self.strain_gt.mean(axis=2)[:, 1], self.strain_nn.mean(axis=2)[:, 1])
 
         return mape_cir, mape_rad
@@ -106,17 +121,20 @@ class EvaluationCase():
     def _segment(model: nn.Module, image: torch.Tensor, target_class: int = 2) -> np.ndarray:
 
         model.eval()
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        inp: torch.Tensor = image.unsqueeze(0).double().clone()
-        out, _, _ = model(inp)
-        pred: torch.Tensor = F.softmax(out, dim=1).argmax(dim=1).detach()[0]
+        inp: torch.Tensor = image.unsqueeze(0).double().clone().to(device)
+        out = model(inp)[0]
+        pred: torch.Tensor = F.softmax(out, dim=1).argmax(dim=1).detach().cpu()[0]
         pred = (pred == target_class)
+        
         pred = morphology.binary_closing(pred)
         blobs, num = measure.label(pred, background=0, return_num=True)
         sizes = [(blobs == i).sum() for i in range(1, num + 1)]
-        blob_index = np.argmax(sizes) + 1
-
-        return (blobs == blob_index)
+        if len(sizes) > 0:
+            blob_index = np.argmax(sizes) + 1
+            return (blobs == blob_index)
+        return pred
 
     @staticmethod
     def _reference(mask: np.ndarray) -> np.ndarray:

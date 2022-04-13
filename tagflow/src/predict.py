@@ -33,7 +33,7 @@ def track(imt: np.ndarray, r0: np.ndarray, in_st: bool = True, verbose: int = 0)
     batch_size = 8
     N_batches = int(np.ceil(N / batch_size))
 
-    device = torch.device('cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if in_st:
         model = load_model(TRACK_MODEL_PATH, device=device)
     else:
