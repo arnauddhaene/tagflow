@@ -2,6 +2,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 import pandas as pd
+import numpy as np
 
 import click
 
@@ -9,17 +10,18 @@ import torch
 from torch import nn
 
 from tagflow.src.case import EvaluationCase
-from tagflow.models.segmentation.unet import UNet
+from tagflow.models.segmentation.unet import UNetSS
 from tagflow.data.datasets import DMDTimeDataset
 
 
 @click.command()
 @click.option('--name', default='dmd_eval', help="Folder name for saving evaluation files.")
-@click.option('--model-name', default='model_cine_tag_only_myo_v1_finetuned_dmd_v0.pt', help="Model name")
+@click.option('--model-name', default='model_cine_tag_only_myo_v0_finetuned_dmd_v4_prime.pt',
+              help="Model name")
 def run(name, model_name):
     
     model_path = Path('tagflow/network_saves') / model_name
-    model: nn.Module = UNet(n_channels=1, n_classes=2, bilinear=True).double()
+    model: nn.Module = UNetSS(n_channels=1, n_classes=2, bilinear=True).double()
     # Load old saved version of the model as a state dictionary
     saved_model_sd = torch.load(model_path, map_location=torch.device('cpu'))
     # Extract UNet if saved model is parallelized
@@ -37,11 +39,15 @@ def run(name, model_name):
         ec = EvaluationCase(image, video, mask, model, recompute=True, target_class=1,
                             path=f'../dmd_eval/{name}/scan_{idx}_{slic}.npz')
         
+        if np.sum(ec.pred) == 0:
+            continue
+        
         mape_circ, mape_radial = ec.mape()
         mae_circ, mae_radial = ec.mae()
+        hd = ec.hausdorff_distance()
         
         storage.append(dict(slice=slic, dice=ec.dice(), mape_circ=mape_circ, mape_radial=mape_radial,
-                            mae_circ=mae_circ, mae_radial=mae_radial))
+                            mae_circ=mae_circ, mae_radial=mae_radial, hd=hd))
 
     df = pd.DataFrame(storage)
 
