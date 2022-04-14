@@ -1,5 +1,5 @@
 import numpy as np
-import pydicom
+import h5py
 
 import streamlit as st
 
@@ -50,19 +50,20 @@ def write():
         
     if ss.status().value < SessionStatus.image.value:
         st.sidebar.button('Use sample image', on_click=load_sample)
+                
+        datafile = st.sidebar.file_uploader('Upload sequence of images in HDF5 format', type='h5',
+                                            accept_multiple_files=False)
         
-        images = st.sidebar.file_uploader('Upload series of DICOM files (in order)',
-                                          type='dcm', accept_multiple_files=True)
-        
-        if len(images) > 0:
-            res = map(lambda ds: (ds.InstanceNumber, ds.pixel_array), map(pydicom.dcmread, images))
+        if datafile:
+            hf = h5py.File(datafile, 'r')
+            dataset = st.sidebar.selectbox('Choose dataset', hf.keys())
             
             ss.image.update(
-                np.array(list(zip(*sorted(res, key=lambda item: item[0])))[1])
+                np.array(hf.get(dataset))
             )
-
+            
             Player().display()
-
+            
     else:
         st.sidebar.button('Clear current image', on_click=clear)
         Player().display()
