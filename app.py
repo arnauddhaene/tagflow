@@ -42,9 +42,6 @@ def main():
     
     ss = SessionState()
     
-    # For debugging
-    # st.sidebar.write(ss.status())
-    
     if ss.status().value < SessionStatus.reference.value:
         st.sidebar.warning('Tracking reference not set.')
     else:

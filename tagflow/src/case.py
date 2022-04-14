@@ -121,10 +121,11 @@ class EvaluationCase():
     def _segment(model: nn.Module, image: torch.Tensor, target_class: int = 2) -> np.ndarray:
 
         model.eval()
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        inp: torch.Tensor = image.unsqueeze(0).double().clone()
-        out = model(inp)
-        pred: torch.Tensor = F.softmax(out['logits'], dim=1).argmax(dim=1).detach()[0]
+        inp: torch.Tensor = image.unsqueeze(0).double().clone().to(device)
+        out = model(inp)[0]
+        pred: torch.Tensor = F.softmax(out, dim=1).argmax(dim=1).detach().cpu()[0]
         pred = (pred == target_class)
         
         pred = morphology.binary_closing(pred)

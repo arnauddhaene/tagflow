@@ -23,6 +23,8 @@ df['slice_corrected'] = df.slice.apply(lambda s: s.split('_')[0].translate(str.m
 c1, c2, c3 = st.sidebar.columns(3)
 
 c1.metric('Avg. Dice', f'{df.dice.mean() * 100:.2f}')
+if 'hd' in df.columns:
+    c1.metric('Avg. HD', f'{df.hd.mean():.2f}')
 c2.metric('Avg. MAEc', f'{df.mae_circ.mean():.2f}')
 c3.metric('Avg. MAEr', f'{df.mae_radial.mean():.2f}')
 c2.metric('Avg. MAPEc', f'{df.mape_circ.mean():.2f}')
