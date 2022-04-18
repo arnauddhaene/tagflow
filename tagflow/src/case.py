@@ -43,10 +43,10 @@ class EvaluationCase():
                 print('No mask predicted for case.')
             else:
                 self.deformation_gt = track(
-                    self.video, self._reference(self.mask), in_st=False
+                    self.video, self._reference(self.mask)
                 )
                 self.deformation_nn = track(
-                    self.video, self._reference(self.pred), in_st=False
+                    self.video, self._reference(self.pred)
                 )
                 
                 self.mesh_gt, self.strain_gt = self._strain(self.mask, np.rollaxis(self.deformation_gt, 2))

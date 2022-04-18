@@ -18,7 +18,7 @@ from tagflow.data.datasets import DMDTimeDataset
 
 @click.command()
 @click.option('--name', default='dmd_eval', help="Folder name for saving evaluation files.")
-@click.option('--model-name', default='model_cine_tag_only_myo_v3_finetuned_dmd_v0.pt', help="Model name")
+@click.option('--model-name', default='model_cine_tag_only_myo_v4_finetuned_dmd_v0.pt', help="Model name")
 def run(name, model_name):
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
