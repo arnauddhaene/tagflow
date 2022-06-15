@@ -3,7 +3,7 @@ from typing import List
 
 import streamlit as st
 
-from .object import StateObject, Image, Reference, Deformation, RoI, Strain
+from .object import StateObject, Image, Reference, Deformation, RoI, Strain, Contour
  
 
 class SessionStatus(enum.Enum):
@@ -22,6 +22,7 @@ class SessionState():
         self.deformation: Deformation = Deformation()
         self.roi: RoI = RoI()
         self.strain: Strain = Strain()
+        self.contour: Contour = Contour()
 
     def clear(self, names: List[str] = None):
         st.legacy_caching.clear_cache()

@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, List
 
 import numpy as np
 import pandas as pd
@@ -7,11 +7,12 @@ from PIL import Image, ImageEnhance
 
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas  # type:ignore
-from scipy import spatial, interpolate
+from scipy import interpolate  # , spatial
 from skimage import draw
 
 
 from .base import BaseWidget
+from ..src.case import EvaluationCase
 from ..state.state import SessionState
 from ..utils import unpack_circle
 
@@ -63,7 +64,7 @@ class ReferencePicker(BaseWidget):
         
         bg_image: Image = self.enhance()
 
-        if self.ref_points is None and self.roi is None:
+        if (self.ref_points is None or self.contour is None) and self.roi is None:
             self.reference()
         
         self.canvas = st_canvas(
@@ -115,18 +116,30 @@ class ReferencePicker(BaseWidget):
     
     def fetch_drawed_annot(self) -> Dict[str, Any]:
         
-        if self.ref_points is not None:
+        if self.contour is not None:
+
+            outer, inner = self.contour
+
             # use offset and ymin, xmin to push coords into canvas space
             offset = np.array([3.5, 0.0])
-            ref = (self.ref_points - np.array([self.ymin, self.xmin])) * self.stretch - offset
+            ref_inner = (inner - np.array([self.ymin, self.xmin])) * self.stretch - offset
+            ref_outer = (outer - np.array([self.ymin, self.xmin])) * self.stretch - offset
             
-            return dict(objects=[
-                dict(
-                    type='circle', originX='left', originY='center',
-                    left=left, top=top, width=6, height=6, fill='#FF0000', stroke='#FF0000',
-                    strokeWidth=1, angle=0, paintFirst='fill', radius=3
-                ) for left, top in ref
-            ])
+            return dict(
+                objects=([
+                    dict(
+                        type='circle', originX='left', originY='center',
+                        left=left, top=top, width=6, height=6, fill='#FF0000', stroke='#FF0000',
+                        strokeWidth=1, angle=0, paintFirst='fill', radius=3
+                    ) for left, top in ref_inner
+                ] + [
+                    dict(
+                        type='circle', originX='left', originY='center',
+                        left=left, top=top, width=6, height=6, fill='#0000FF', stroke='#0000FF',
+                        strokeWidth=1, angle=0, paintFirst='fill', radius=3
+                    ) for left, top in ref_outer
+                ])
+            )
 
     def zoom_in(self):
         """Zooms in on the plotted image based on center or padded reference tracking points."""
@@ -155,6 +168,7 @@ class ReferencePicker(BaseWidget):
         ss = SessionState()
         self.ref_points = ss.reference.value()
         self.roi = ss.roi.value()
+        self.contour = ss.contour.value()
 
     def save_reference(self):
         """Save reference tracking points to sessions state"""
@@ -166,21 +180,29 @@ class ReferencePicker(BaseWidget):
                 objects[col] = objects[col].astype('str')
                 
             if len(objects) > 0:
-                lt = np.array(objects[['left', 'top']])
-                r = np.array(objects['radius'])  # radius
-                sw = np.array(objects['strokeWidth']) / 2.  # half of strokeWidth
-                
-                offset = np.vstack([r + sw, np.zeros_like(r)]).T
-                                                
-                self.ref_points = np.array([self.ymin, self.xmin]) \
-                    + (lt + offset) / self.stretch
-                
+
+                self.contour = []
+
+                for color in ['#0000FF', '#FF0000']:
+
+                    lt = np.array(objects[objects.stroke == color][['left', 'top']])
+                    r = np.array(objects[objects.stroke == color]['radius'])  # radius
+                    sw = np.array(objects[objects.stroke == color]['strokeWidth']) / 2.  # half of strokeWidth
+                    
+                    offset = np.vstack([r + sw, np.zeros_like(r)]).T
+                                                    
+                    self.contour.append(
+                        np.array([self.ymin, self.xmin]) + (lt + offset) / self.stretch
+                    )
+                    
                 shape = self.image.shape[1:]
-                self.roi = ReferencePicker.compute_roi(self.ref_points, shape)
-        
+                self.roi = ReferencePicker.compute_roi(self.contour, shape)
+                self.ref_points = EvaluationCase._reference(np.array(self.roi))
+
         ss = SessionState()
         ss.reference.update(self.ref_points)
         ss.roi.update(self.roi)
+        ss.contour.update(self.contour)
         
     def clear_reference(self):
         """Clear reference tracking points from sessions state"""
@@ -188,23 +210,23 @@ class ReferencePicker(BaseWidget):
         ss.clear(['reference', 'deformation', 'roi'])
 
     @staticmethod
-    def compute_roi(reference: np.ndarray, size: Tuple[int, int]) -> Tuple[np.ndarray, np.ndarray]:
+    def compute_roi(contour: List[np.ndarray], size: Tuple[int, int]) -> Tuple[np.ndarray, np.ndarray]:
         
-        # Outer hull
-        outer_hull = spatial.ConvexHull(reference)
+        # # Outer hull
+        # outer_hull = spatial.ConvexHull(contour)
         
-        # Inner hull by finding the Convex Hull of inverted radius space
-        t0 = reference - reference.mean(axis=0)
-        x, y = t0[:, 0], t0[:, 1]
-        t0 = np.array([np.sqrt(x ** 2 + y ** 2), np.arctan2(y, x)]).T
-        t0[:, 0] = 1 / (t0[:, 0] + 1e-12)
-        r, t = t0[:, 0], t0[:, 1]
-        t0 = np.array([r * np.sin(t), r * np.cos(t)]).T
+        # # Inner hull by finding the Convex Hull of inverted radius space
+        # t0 = contour - contour.mean(axis=0)
+        # x, y = t0[:, 0], t0[:, 1]
+        # t0 = np.array([np.sqrt(x ** 2 + y ** 2), np.arctan2(y, x)]).T
+        # t0[:, 0] = 1 / (t0[:, 0] + 1e-12)
+        # r, t = t0[:, 0], t0[:, 1]
+        # t0 = np.array([r * np.sin(t), r * np.cos(t)]).T
 
-        inner_hull = spatial.ConvexHull(t0)
+        # inner_hull = spatial.ConvexHull(t0)
         
-        inner_pts = ReferencePicker.interp_pts(reference[inner_hull.vertices])
-        outer_pts = ReferencePicker.interp_pts(reference[outer_hull.vertices])
+        outer_pts = ReferencePicker.interp_pts(contour[0])
+        inner_pts = ReferencePicker.interp_pts(contour[1])
                 
         inner_pg = draw.polygon(inner_pts[1, :], inner_pts[0, :], size)
         outer_pg = draw.polygon(outer_pts[1, :], outer_pts[0, :], size)
