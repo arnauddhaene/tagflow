@@ -1,16 +1,15 @@
 from typing import Dict
 
+import string
+
 import numpy as np
-import holoviews as hv
+import matplotlib.pyplot as plt
 
 import streamlit as st
 
 from .base import BaseWidget
 from ..state.state import SessionState
 from ..src.case import EvaluationCase
-
-
-hv.extension('bokeh')
 
 
 class StrainEstimator(BaseWidget):
@@ -49,27 +48,66 @@ class StrainEstimator(BaseWidget):
             self.mesh, strain = EvaluationCase._strain(ss.roi.value(), self.deformation)
             ss.strain.update(strain)
 
+        deformation = np.moveaxis(ss.deformation.value(), (0, 1, 2), (2, 0, 1))
+
         self.mesh = np.array(np.where(ss.roi.value()))
-        self.gl_strain = ss.strain.value()
-        
-        peaks = np.argmax(np.abs(self.gl_strain.mean(axis=2)), axis=0)
-                
-        times = list(range(self.gl_strain.shape[0]))
-        
-        time = hv.Dimension('time', label='Time', unit='s')
-        strain_c = hv.Dimension('strain_c', label='Circumferential strain')
-        strain_r = hv.Dimension('strain_c', label='Radial strain')
+        self.strain = ss.strain.value()
+        self.image = ss.image.value()[0]
+        self.roi = ss.roi.value()
 
-        cir = hv.Points((self.mesh[1], -self.mesh[0], self.gl_strain[peaks[0], 0, :]),
-                        vdims='strain', group='Peak circumferential strain', label=f'(t={peaks[0]})')
-        rad = hv.Points((self.mesh[1], -self.mesh[0], self.gl_strain[peaks[1], 1, :]),
-                        vdims='strain', group='Peak radial strain', label=f'(t={peaks[1]})')
+        x, y = np.meshgrid(range(self.image.shape[1]), range(self.image.shape[0]))
+        z = np.zeros((2, *self.image.shape))
 
-        cir_t = hv.Curve((times, self.gl_strain.mean(axis=2)[:, 0]), time, strain_c, label='Circumferential')
-        rad_t = hv.Curve((times, self.gl_strain.mean(axis=2)[:, 1]), time, strain_r, label='Radial')
-            
-        fig = (cir + rad).opts(hv.opts.Points(color='strain', cmap='viridis', marker='square',
-                                              size=4, colorbar=True, xaxis=None, yaxis=None)) \
-            + (cir_t * rad_t).opts(ylabel=r"$$E$$", legend_position='top')
+        peaks = np.abs(self.strain.swapaxes(0, 2).mean(axis=0))[:2].argmax(axis=1)
 
-        st.bokeh_chart(hv.render(fig.cols(3), backend='bokeh'))
+        for i, (coords, s) in enumerate(zip(self.mesh.T, self.strain.swapaxes(0, 2))):
+            m, n = tuple(coords)
+            z[:, m, n] = s[[0, 1], [10, 11]]
+
+        fig, ax = plt.subplots(2, 3, figsize=(10, 6.5))
+
+        ax[0, 0].imshow(self.image, cmap='gray')
+        ax[0, 0].imshow(np.ma.masked_where(self.roi == 0, self.roi), cmap='Reds', alpha=0.4)
+        ax[0, 0].set_title('Myocardium segmentation')
+
+        ax[0, 1].imshow(self.image, cmap='gray')
+        for i in range(deformation.shape[0]):
+            ax[0, 1].plot(deformation[i, 0, :], deformation[i, 1, :], color='y')
+        ax[0, 1].set_title('Deformation field')
+
+        mean_strain = self.strain.mean(axis=2)
+        ax[0, 2].plot(list(range(25)), mean_strain[:, 0], label='Circumferential', c='r')
+        ax[0, 2].plot(peaks[0], mean_strain[peaks[0], 0], marker='o', ms=8, c='r')
+        ax[0, 2].axvline(peaks[0], linestyle=':', c='r')
+        ax[0, 2].plot(list(range(25)), mean_strain[:, 1], label='Radial', c='b')
+        ax[0, 2].plot(peaks[1], mean_strain[peaks[1], 1], marker='o', ms=8, c='b')
+        ax[0, 2].axvline(peaks[1], linestyle=':', c='b')
+        ax[0, 2].legend(loc='best')
+        ax[0, 2].set_title('Avg. myocardial strain')
+        ax[0, 2].set_xlabel(r'Time-point $t$ (1)')
+        ax[0, 2].set_ylabel(r'Strain $E$ (%)')
+
+        boundaries = dict(vmin=self.strain[:, :2, :].min(), vmax=self.strain[:, :2, :].max())
+        mesh1 = ax[1, 1].pcolormesh(x, y, np.ma.masked_where(z[0] == 0, z[0]), cmap='RdBu', **boundaries)
+        ax[1, 1].set_title(r'Circumferential strain $t_{%s}$' % peaks[0])
+
+        mesh2 = ax[1, 2].pcolormesh(x, y, np.ma.masked_where(z[1] == 0, z[1]), cmap='RdBu', **boundaries)
+        ax[1, 2].set_title(r'Radial strain $t_{%s}$' % peaks[1])
+
+        center_x, center_y = deformation.mean(axis=(0, 2))
+        padding = 35
+        off_axes = [(0, 0), (0, 1), (1, 1), (1, 2), (1, 0)]
+        for a, b in off_axes:
+            ax[a, b].axis('off')
+            ax[a, b].set_xlim(center_x - padding, center_x + padding)
+            ax[a, b].set_ylim(center_y + padding, center_y - padding)
+
+        for n, axes in enumerate(np.array(ax.flat)[[0, 1, 2, 4, 5]]):
+            axes.text(-0.15, 1.13, string.ascii_uppercase[n], 
+                      transform=axes.transAxes, size=20, weight='bold')
+
+        plt.colorbar(mesh1, ax=ax[1, 1])
+        plt.colorbar(mesh2, ax=ax[1, 2])
+
+        plt.tight_layout()
+        st.pyplot(fig)
