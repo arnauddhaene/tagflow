@@ -54,7 +54,15 @@ class ReferencePicker(BaseWidget):
     def display(self):
         """Display in streamlit application"""
 
+        canvas_args = {}
+
         mode = st.sidebar.selectbox('Drawing mode', ['transform', 'point'])
+        canvas_args['drawing_mode'] = mode
+        if mode == 'point':
+            contour = st.sidebar.selectbox('Contour', ['inner', 'outer'])
+            canvas_args['stroke_color'] = '#FF0000' if contour == 'inner' else '#0000FF'
+            canvas_args['fill_color'] = '#FF0000' if contour == 'inner' else '#0000FF'
+
         save, clear = st.sidebar.columns(2)
 
         save.button('Save reference', on_click=self.save_reference)
@@ -68,8 +76,8 @@ class ReferencePicker(BaseWidget):
             self.reference()
         
         self.canvas = st_canvas(
-            fill_color='#FF0000', stroke_color='#FF0000',
-            stroke_width=1., point_display_radius=3., drawing_mode=mode,
+            **canvas_args,
+            stroke_width=1., point_display_radius=3.,
             background_image=bg_image, update_streamlit=True,
             height=self.stretch * (self.xmax - self.xmin),
             width=self.stretch * (self.ymax - self.ymin),
