@@ -93,8 +93,8 @@ class Deformation(StateObject):
         if not value.ndim == 3 or not value.shape[0] == 25 or not value.shape[2] == 2:
             raise ValueError(f'Must pass array of shape (25, N, 2). Got {value.shape}.')
 
-        if not value.dtype == np.float16:
-            value = value.astype(np.float16)
+        if not value.dtype == np.float64:
+            value = value.astype(np.float64)
 
         return value
 
@@ -131,8 +131,8 @@ class Strain(StateObject):
         if not value.ndim == 3 or not value.shape[0] == 25 or not value.shape[1] == 3:
             raise ValueError(f'Must pass array of shape (25, 3, N). Got {value.shape}.')
 
-        if not value.dtype == np.float32:
-            value = value.astype(np.float32)
+        if not value.dtype == np.float64:
+            value = value.astype(np.float64)
 
         return value
 

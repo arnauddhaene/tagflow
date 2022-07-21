@@ -5,11 +5,14 @@ import string
 import numpy as np
 import matplotlib.pyplot as plt
 
+from skimage import measure
+
 import streamlit as st
 
 from .base import BaseWidget
 from ..state.state import SessionState
 from ..src.case import EvaluationCase
+from tagflow.widgets.reference_picker import ReferencePicker
 
 
 class StrainEstimator(BaseWidget):
@@ -43,12 +46,13 @@ class StrainEstimator(BaseWidget):
         """Display results in streamlit application"""
         ss = SessionState()
 
+        self.roi = ss.roi.value()
+
         # self.mesh.shape[1] != st.session_state.gl_strain.shape[2]
         if ss.strain.value() is None or st.sidebar.button('Recompute strain'):
-            self.mesh, strain = EvaluationCase._strain(ss.roi.value(), self.deformation)
+            self.mesh, strain = EvaluationCase._strain(self.roi, self.deformation)
             ss.strain.update(strain)
 
-        self.roi = ss.roi.value()
         self.mesh = np.array(np.where(self.roi))
         self.strain = ss.strain.value()
         self.image = ss.image.value()[0]
@@ -67,7 +71,12 @@ class StrainEstimator(BaseWidget):
         fig, ax = plt.subplots(2, 3, figsize=(10, 6.5))
 
         ax[0, 0].imshow(self.image, cmap='gray')
-        ax[0, 0].imshow(np.ma.masked_where(self.roi == 0, self.roi), cmap='Reds', alpha=0.4)
+        # ax[0, 0].imshow(np.ma.masked_where(self.roi == 0, self.roi), cmap='Reds', alpha=0.4)
+        contours = measure.find_contours(self.roi)
+        for i, contour in enumerate(contours):
+            contour = ReferencePicker.interp_pts(contour[::5, ::-1])
+            ax[0, 0].plot(*contour, c='#C44536', label='Myocardium' if i == 0 else None)
+
         ax[0, 0].set_title('Myocardium segmentation')
 
         ax[0, 1].imshow(self.image, cmap='gray')

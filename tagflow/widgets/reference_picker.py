@@ -66,7 +66,7 @@ class ReferencePicker(BaseWidget):
 
         mode = st.sidebar.selectbox('Drawing mode', ['transform', 'point'])
         self.reference_method = st.sidebar.selectbox(
-            'Reference setting method', ['intersections', 'mesh'],
+            'Reference setting method', ['mesh', 'intersections'],
         )
 
         canvas_args['drawing_mode'] = mode
