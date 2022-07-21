@@ -1,9 +1,7 @@
-import numpy as np
 from skimage import measure
 
 from .reference_picker import ReferencePicker
 from ..src.predict import segment
-from ..src.case import EvaluationCase
 
 
 class NeuralReference(ReferencePicker):
@@ -15,9 +13,9 @@ class NeuralReference(ReferencePicker):
         roi (ArrayLike): circle coordinates for outer ROI [Cx, Cy, R]
     """
     
-    def __init__(self):
+    def __init__(self, *args):
         """Constructor"""
-        super().__init__()
+        super().__init__(*args)
     
     def reference(self):
         """Computes reference tracking points
@@ -26,10 +24,10 @@ class NeuralReference(ReferencePicker):
             ref_points (ArrayLike): reference tracking points (Npoints x 2)
             roi (ArrayLike): circle coordinates for outer ROI [Cx, Cy, R]
         """
-        self.roi = segment(self.image[0])
-        contour = list(map(lambda c: c[::15, ::-1], measure.find_contours(self.roi)))
+        self.roi = segment(self.image[0] / self.image[0].max())
+        contour = list(map(lambda c: c[::10, ::-1], measure.find_contours(self.roi)))
         # self.contour = np.concatenate(contour)
         self.contour = contour
-        self.ref_points = EvaluationCase._reference(np.array(self.roi))
-        
+        self.ref_points = self.compute_ref_points()
+
         self.save_reference()

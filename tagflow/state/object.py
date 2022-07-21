@@ -11,7 +11,7 @@ def _validate_ndarray(value: np.ndarray) -> np.ndarray:
         raise ValueError(f'Must pass numpy.ndarray. Got {type(value)}')
 
     if np.isnan(value).sum() > 0:
-        raise ValueError('Must pass image that does not contain any NaNs.')
+        raise ValueError('Must pass array that does not contain any NaNs.')
     
     return value
 
@@ -21,9 +21,7 @@ class StateObject():
     def __init__(self, key: str, value: Any = None):
         self.key: str = key
         if self.key not in st.session_state:
-            if value is not None:
-                self.__class__._validate(value)
-            st.session_state[self.key] = value
+            self.update(value)
 
     def value(self) -> Any:
         if self.key not in st.session_state:
@@ -31,7 +29,8 @@ class StateObject():
         return st.session_state[self.key]
 
     def update(self, value: Any) -> None:
-        self.__class__._validate(value)
+        if value is not None:
+            value = self.__class__._validate(value)
         st.session_state[self.key] = value
 
     def clear(self):
@@ -55,8 +54,9 @@ class Image(StateObject):
         if not value.ndim == 3 or not value.shape[0] == 25:
             raise ValueError(f'Must pass array of shape (25, W, H). Got {value.shape}.')
 
-        if not value.dtype == np.float64:
-            value = value.astype(np.float64)
+        if not value.dtype == np.uint8:
+            value = (value - value.min()) / (value.max() - value.min()) * 255
+            value = value.astype(np.uint8)
             
         return value
 
@@ -74,8 +74,8 @@ class Reference(StateObject):
         if not value.ndim == 2 or not value.shape[1] == 2:
             raise ValueError(f'Must pass array of shape (N, 2). Got {value.shape}.')
 
-        if not value.dtype == np.float64:
-            value = value.astype(np.float64)
+        if not value.dtype == np.float16:
+            value = value.astype(np.float16)
 
         return value
 
@@ -93,8 +93,8 @@ class Deformation(StateObject):
         if not value.ndim == 3 or not value.shape[0] == 25 or not value.shape[2] == 2:
             raise ValueError(f'Must pass array of shape (25, N, 2). Got {value.shape}.')
 
-        if not value.dtype == np.float64:
-            value = value.astype(np.float64)
+        if not value.dtype == np.float16:
+            value = value.astype(np.float16)
 
         return value
 
@@ -131,8 +131,8 @@ class Strain(StateObject):
         if not value.ndim == 3 or not value.shape[0] == 25 or not value.shape[1] == 3:
             raise ValueError(f'Must pass array of shape (25, 3, N). Got {value.shape}.')
 
-        if not value.dtype == np.float64:
-            value = value.astype(np.float64)
+        if not value.dtype == np.float32:
+            value = value.astype(np.float32)
 
         return value
 

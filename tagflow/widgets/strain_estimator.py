@@ -48,12 +48,10 @@ class StrainEstimator(BaseWidget):
             self.mesh, strain = EvaluationCase._strain(ss.roi.value(), self.deformation)
             ss.strain.update(strain)
 
-        deformation = np.moveaxis(ss.deformation.value(), (0, 1, 2), (2, 0, 1))
-
-        self.mesh = np.array(np.where(ss.roi.value()))
+        self.roi = ss.roi.value()
+        self.mesh = np.array(np.where(self.roi))
         self.strain = ss.strain.value()
         self.image = ss.image.value()[0]
-        self.roi = ss.roi.value()
 
         x, y = np.meshgrid(range(self.image.shape[1]), range(self.image.shape[0]))
         z = np.zeros((2, *self.image.shape))
@@ -62,7 +60,9 @@ class StrainEstimator(BaseWidget):
 
         for i, (coords, s) in enumerate(zip(self.mesh.T, self.strain.swapaxes(0, 2))):
             m, n = tuple(coords)
-            z[:, m, n] = s[[0, 1], [10, 11]]
+            z[:, m, n] = s[[0, 1], peaks]
+
+        deformation = np.moveaxis(ss.deformation.value(), (0, 1, 2), (2, 0, 1))
 
         fig, ax = plt.subplots(2, 3, figsize=(10, 6.5))
 

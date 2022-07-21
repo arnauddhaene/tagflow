@@ -19,14 +19,16 @@ class Player(BaseWidget):
         window (str): 'zoomed' or 'wide' view of the image
     """
     
-    def __init__(self):
+    def __init__(self, aspect: float = .6):
         """Constructor"""
         
         ss = SessionState()
         
         if ss.status().value < SessionStatus.image.value:
             raise ValueError(f'Session must contain image to display {self.__class__.__name__}')
-        
+
+        self.aspect = aspect
+
         self.image: np.ndarray = ss.image.value()
         self.points: Optional[np.ndarray] = ss.deformation.value()
         self.Nt: int = self.image.shape[0]
@@ -43,10 +45,8 @@ class Player(BaseWidget):
             
     def display(self):
         """Display player by updating pyplot every 1 / exp(speed)"""
-        col1, col2 = st.sidebar.columns(2)
         
-        self.speed = col1.number_input('Speed', 0, 10, 5, 1)
-        self.window = col2.selectbox('View', ['zoomed', 'wide'])
+        self.speed = st.sidebar.number_input('Speed', 0, 10, 5, 1)
         self.update_view()
         
         image = plt.imshow(self.image[st.session_state.frame], cmap='gray')
@@ -73,18 +73,18 @@ class Player(BaseWidget):
         
     def update_view(self):
         """Update pyplot view to zoomed (either defined or padded by points) or wide"""
-        if self.window == 'zoomed':
-            height, width = tuple(self.image.shape[1:])
-                
-            if self.points is None:
-                xmin, xmax = width * .25, width * .75
-                ymin, ymax = height * .25, height * .75
-            else:
-                xmin, xmax = self.points[:, :, 0].min(), self.points[:, :, 0].max()
-                ymin, ymax = self.points[:, :, 1].min(), self.points[:, :, 1].max()
-            
-            plt.xlim(max(0, xmin - 20), min(xmax + 20, width))
-            plt.ylim(min(ymax + 20, height), max(0, ymin - 20))
+
+        xdim, ydim = tuple(self.image.shape[1:])
+        shortest_dim = min(xdim, ydim)
+        
+        cx, cy = xdim / 2, ydim / 2
+
+        xmin, xmax = \
+            int(cx - (shortest_dim / (3 * self.aspect))), int(cx + (shortest_dim / (3 * self.aspect)))
+        ymin, ymax = int(cy - (shortest_dim / 3)), int(cy + (shortest_dim / 3))
+    
+        plt.xlim(xmin, xmax)
+        plt.ylim(ymax, ymin)
                 
     def toggle_play(self):
         st.session_state.playing = not st.session_state.playing

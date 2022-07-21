@@ -12,10 +12,27 @@ def write():
         
         annot = st.sidebar.selectbox('Annotation', ['Neural Network', 'Hough Transform'])
         
+        st.write("""
+            #  Reference setting page
+
+            Select the annotation method in the sidebar. Points will automatically be placed 
+            around inner and outer contours. Use the **transform** and **point** drawing 
+            modes to  drag and drop existing points or add additional ones respectively.
+        """)
+        col1, col2 = st.columns(2)
+        stretch = col1.number_input('Image size', 2., 7., 6., .5)
+        aspect = col2.number_input('Image aspect', .5, 1.5, .6, .1)
+        
         if annot == 'Hough Transform':
-            HoughReference().display()
+            HoughReference(stretch, aspect).display()
         elif annot == 'Neural Network':
-            NeuralReference().display()
+            NeuralReference(stretch, aspect).display()
+
+        st.write("""
+            Please note that you should press the **Save reference** after contour point 
+            modification or reference setting method modification in order to update underlying 
+            ROI before tracking.
+        """)
         
     else:
-        st.warning('Please uploade an image to use the Hough segmentation algorithm.')
+        st.warning('Please upload an image first.')

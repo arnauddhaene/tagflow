@@ -66,4 +66,5 @@ def write():
             
     else:
         st.sidebar.button('Clear current image', on_click=clear)
-        Player().display()
+        aspect = st.number_input('Image aspect', .5, 1.5, .6, .1)
+        Player(aspect).display()

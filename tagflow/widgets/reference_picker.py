@@ -26,12 +26,13 @@ class ReferencePicker(BaseWidget):
         roi (np.ndarray): circle coordinates for outer ROI [Cx, Cy, R]
     """
     
-    def __init__(self):
+    def __init__(self, stretch: float = 6, aspect: float = .6):
         """Constructor"""
         ss = SessionState()
         
         self.canvas = None
-        self.stretch = 6
+        self.stretch = stretch
+        self.aspect = aspect
         
         self.image: np.ndarray = ss.image.value()
         self.ref_points: Optional[np.ndarray] = None
@@ -50,6 +51,13 @@ class ReferencePicker(BaseWidget):
             NotImplementedError: forces children classes to implement this
         """
         raise NotImplementedError()
+
+    def compute_ref_points(self):
+        return EvaluationCase._reference(
+            np.array(self.roi),
+            self.reference_method,
+            self.image[0].astype(np.float32)
+        )
         
     def display(self):
         """Display in streamlit application"""
@@ -57,6 +65,10 @@ class ReferencePicker(BaseWidget):
         canvas_args = {}
 
         mode = st.sidebar.selectbox('Drawing mode', ['transform', 'point'])
+        self.reference_method = st.sidebar.selectbox(
+            'Reference setting method', ['intersections', 'mesh'],
+        )
+
         canvas_args['drawing_mode'] = mode
         if mode == 'point':
             contour = st.sidebar.selectbox('Contour', ['inner', 'outer'])
@@ -95,9 +107,13 @@ class ReferencePicker(BaseWidget):
         """
         
         xdim, ydim = tuple(self.image.shape[1:])
+        shortest_dim = min(xdim, ydim)
         
-        self.xmin, self.xmax = tuple(map(int, (xdim * .30, xdim * .65,)))
-        self.ymin, self.ymax = tuple(map(int, (ydim * .25, ydim * .75,)))
+        cx, cy = xdim / 2, ydim / 2
+
+        self.xmin, self.xmax = int(cx - (shortest_dim / 5)), int(cx + (shortest_dim / 5))
+        self.ymin, self.ymax = \
+            int(cy - (shortest_dim / (5 * self.aspect))), int(cy + (shortest_dim / (5 * self.aspect)))
         
         ct, bn = st.sidebar.columns(2)
         
@@ -205,7 +221,7 @@ class ReferencePicker(BaseWidget):
                     
                 shape = self.image.shape[1:]
                 self.roi = ReferencePicker.compute_roi(self.contour, shape)
-                self.ref_points = EvaluationCase._reference(np.array(self.roi))
+                self.ref_points = self.compute_ref_points()
 
         ss = SessionState()
         ss.reference.update(self.ref_points)
@@ -213,9 +229,15 @@ class ReferencePicker(BaseWidget):
         ss.contour.update(self.contour)
         
     def clear_reference(self):
-        """Clear reference tracking points from sessions state"""
+        """Clear reference tracking points and def and roi from sessions state"""
         ss = SessionState()
         ss.clear(['reference', 'deformation', 'roi'])
+
+    def refresh_ref_points(self):
+        """Clear only reference tracking points from sessions state"""
+        ss = SessionState()
+        ss.clear(['reference'])
+        ss.reference.update(self.compute_ref_points())
 
     @staticmethod
     def compute_roi(contour: List[np.ndarray], size: Tuple[int, int]) -> Tuple[np.ndarray, np.ndarray]:

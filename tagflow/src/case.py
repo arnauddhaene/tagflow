@@ -1,12 +1,14 @@
 from typing import Tuple
 from pathlib import Path
 
+import copy
+
 import numpy as np
 from skimage import morphology, measure
 from medpy.metric.binary import dc
 from sklearn.metrics import mean_absolute_percentage_error, mean_absolute_error
 import holoviews as hv
-from scipy import interpolate
+# from scipy import interpolate
 from monai.metrics import compute_hausdorff_distance
 
 import torch
@@ -15,7 +17,7 @@ import torch.nn.functional as F
 
 from ..src.rbf import RBF, get_principle_strain
 from ..src.predict import track
-from ..utils import generate_reference
+from ..utils import detect_peaks
 
 
 class EvaluationCase():
@@ -137,24 +139,66 @@ class EvaluationCase():
         return pred
 
     @staticmethod
-    def _reference(mask: np.ndarray) -> np.ndarray:
-                
+    def _reference(mask: np.ndarray, method: str, image: np.ndarray = None) -> np.ndarray:
+
         points = np.array(np.where(mask)).T
-        centre = (points.min(axis=0) + points.max(axis=0)) / 2.
-        radius = np.abs(np.linalg.norm(centre - points, axis=1))
 
-        r0 = generate_reference((radius.min(), radius.max(),)) + np.array(centre)
+        if len(points) > 0:
+            if method == 'intersections':
+                assert image is not None, 'I need the image, fool.'
 
-        # Interpolate the mask
-        m, n = mask.shape
-        x, y = np.linspace(0, n - 1, n), np.linspace(0, m - 1, m)
-        p = interpolate.interp2d(x, y, mask, kind='cubic')
-        # Select only the reference points present within the mask
-        # Meaning that interpolated value at that point should be > .5
-        ref0 = r0[np.fromiter((p(xi, yi) for yi, xi in r0), r0.dtype) > .5]
-        
-        return ref0[:, [1, 0]]
-    
+                z = copy.deepcopy(image)
+                xs, ys = np.where(mask == 0)
+                z[xs, ys] = np.nan
+
+                peaks = detect_peaks(-z)
+
+                return np.array(np.where(peaks.T)).T
+
+            elif method == 'mesh':
+                r0, landmarks = [], [[], []]
+
+                contours = measure.find_contours(mask)
+                contours = list(map(lambda c: c[:, ::-1], contours))
+                contours[0] = contours[0][::-1]
+                stops = np.array(
+                    list(map(lambda pts: np.linspace(0, len(pts), 24, endpoint=False), contours)),
+                    dtype=np.int16
+                )
+                
+                for idxs in stops.T:
+                    for c, i in enumerate(idxs):
+                        landmarks[c].append(contours[c][i])
+
+                landmarks = np.array(landmarks)
+
+                for l_id in range(landmarks.shape[1]):
+                    points = tuple(map(lambda axe: np.linspace(*axe, 9), landmarks[:, l_id, :].T))
+                    r0.extend(np.array(points)[:, 1:-1].T)
+
+                return np.array(r0)
+
+            else:
+                raise ValueError('Do better. Give me intersections or mesh')
+            
+            # centre = (points.min(axis=0) + points.max(axis=0)) / 2.
+            # radius = np.abs(np.linalg.norm(centre - points, axis=1))
+
+            # r0 = generate_reference((radius.min(), radius.max(),)) + np.array(centre)
+
+            # # Interpolate the mask
+            # m, n = mask.shape
+            # x, y = np.linspace(0, n - 1, n), np.linspace(0, m - 1, m)
+            # p = interpolate.interp2d(x, y, mask, kind='cubic')
+            # # Select only the reference points present within the mask
+            # # Meaning that interpolated value at that point should be > .5
+            # ref0 = r0[np.fromiter((p(xi, yi) for yi, xi in r0), r0.dtype) > .5]
+            
+            # return ref0[:, [1, 0]]
+
+        else:
+            return np.empty((1, 2))
+
     @staticmethod
     def _strain(mask: np.ndarray, deformation: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         
@@ -180,7 +224,10 @@ class EvaluationCase():
                 
             gl_strain.append(get_principle_strain(mesh, deformation_grad))
         
-        return mesh, np.array(gl_strain)
+        strain = np.array(gl_strain)
+        strain[np.isnan(strain)] = 0.
+        
+        return mesh, strain
 
     def visualize(self) -> hv.Layout:
         
