@@ -204,7 +204,7 @@ class EvaluationCase():
         
         mesh = np.array(np.where(mask))
         
-        # Needs to be (2 x Npoints time) to be solved more efficiently
+        # Needs to be (2 x Npoints x time) to be solved more efficiently
         deformation = np.swapaxes(deformation, 0, 2)
         
         Nt = deformation.shape[2]

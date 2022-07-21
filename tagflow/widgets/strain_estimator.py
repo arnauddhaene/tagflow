@@ -44,7 +44,7 @@ class StrainEstimator(BaseWidget):
         ss = SessionState()
 
         # self.mesh.shape[1] != st.session_state.gl_strain.shape[2]
-        if ss.strain.value() is None:
+        if ss.strain.value() is None or st.sidebar.button('Recompute strain'):
             self.mesh, strain = EvaluationCase._strain(ss.roi.value(), self.deformation)
             ss.strain.update(strain)
 
