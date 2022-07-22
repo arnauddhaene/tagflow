@@ -1,18 +1,17 @@
 from typing import Dict
 
-import string
-
 import numpy as np
-import matplotlib.pyplot as plt
 
-from skimage import measure
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from .base import BaseWidget
 from ..state.state import SessionState
 from ..src.case import EvaluationCase
-from tagflow.widgets.reference_picker import ReferencePicker
 
 
 class StrainEstimator(BaseWidget):
@@ -56,67 +55,103 @@ class StrainEstimator(BaseWidget):
         self.mesh = np.array(np.where(self.roi))
         self.strain = ss.strain.value()
         self.image = ss.image.value()[0]
+        self.deformation = ss.deformation.value()
 
-        x, y = np.meshgrid(range(self.image.shape[1]), range(self.image.shape[0]))
-        z = np.zeros((2, *self.image.shape))
+        st.write("""
+            # Myocardial strain visualization
+        """)
 
-        peaks = np.abs(self.strain.swapaxes(0, 2).mean(axis=0))[:2].argmax(axis=1)
+        sa = StrainAnimation(self.image, self.deformation, self.mesh, self.strain)
+        components.html(sa.anim.to_jshtml(), height=1000)
 
-        for i, (coords, s) in enumerate(zip(self.mesh.T, self.strain.swapaxes(0, 2))):
-            m, n = tuple(coords)
-            z[:, m, n] = s[[0, 1], peaks]
 
-        deformation = np.moveaxis(ss.deformation.value(), (0, 1, 2), (2, 0, 1))
+class StrainAnimation:
 
-        fig, ax = plt.subplots(2, 3, figsize=(10, 6.5))
+    def __init__(
+        self, image: np.ndarray, deformation: np.ndarray, mesh: np.ndarray, strain: np.ndarray,
+    ):
 
-        ax[0, 0].imshow(self.image, cmap='gray')
-        # ax[0, 0].imshow(np.ma.masked_where(self.roi == 0, self.roi), cmap='Reds', alpha=0.4)
-        contours = measure.find_contours(self.roi)
-        for i, contour in enumerate(contours):
-            contour = ReferencePicker.interp_pts(contour[::5, ::-1])
-            ax[0, 0].plot(*contour, c='#C44536', label='Myocardium' if i == 0 else None)
+        self.image = image
+        self.deformation = np.moveaxis(deformation, (0, 1, 2), (2, 0, 1))
+        self.mesh = mesh
+        self.strain = strain
 
-        ax[0, 0].set_title('Myocardium segmentation')
+        self.fig = plt.figure(figsize=(6, 6))
+        gs = GridSpec(2, 2, figure=self.fig)
+        self.ax_time = self.fig.add_subplot(gs[0, :])
+        self.ax_circ = self.fig.add_subplot(gs[1, 0])
+        self.ax_radi = self.fig.add_subplot(gs[1, 1])
 
-        ax[0, 1].imshow(self.image, cmap='gray')
-        for i in range(deformation.shape[0]):
-            ax[0, 1].plot(deformation[i, 0, :], deformation[i, 1, :], color='y')
-        ax[0, 1].set_title('Deformation field')
+        self.fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None)
 
-        mean_strain = self.strain.mean(axis=2)
-        ax[0, 2].plot(list(range(25)), mean_strain[:, 0], label='Circumferential', c='r')
-        ax[0, 2].plot(peaks[0], mean_strain[peaks[0], 0], marker='o', ms=8, c='r')
-        ax[0, 2].axvline(peaks[0], linestyle=':', c='r')
-        ax[0, 2].plot(list(range(25)), mean_strain[:, 1], label='Radial', c='b')
-        ax[0, 2].plot(peaks[1], mean_strain[peaks[1], 1], marker='o', ms=8, c='b')
-        ax[0, 2].axvline(peaks[1], linestyle=':', c='b')
-        ax[0, 2].legend(loc='best')
-        ax[0, 2].set_title('Avg. myocardial strain')
-        ax[0, 2].set_xlabel(r'Time-point $t$ (1)')
-        ax[0, 2].set_ylabel(r'Strain $E$ (%)')
+        self.x, self.y = np.meshgrid(range(self.image.shape[1]), range(self.image.shape[0]))
+        self.z = np.zeros((25, 2, *self.image.shape))
+
+        for t in range(25):
+            for i, (coords, s) in enumerate(zip(self.mesh.T, self.strain.swapaxes(0, 2))):
+                m, n = tuple(coords)
+                self.z[t, :, m, n] = s[[0, 1], [t, t]]
+
+        self.mean_strain = self.strain.mean(axis=2)
+
+        t = 0
+
+        self.ax_time.plot(list(range(25)), self.mean_strain[:, 0], label='Circumferential', c='r')
+        self.time_pt_c, = self.ax_time.plot(t, self.mean_strain[t, 0], marker='o', ms=8, c='r')
+
+        self.ax_time.plot(list(range(25)), self.mean_strain[:, 1], label='Radial', c='b')
+        self.time_pt_r, = self.ax_time.plot(t, self.mean_strain[t, 1], marker='o', ms=8, c='b')
+
+        self.ax_time.legend(loc='best')
+
+        self.ax_time.set_title('Avg. myocardial strain')
+        self.ax_time.set_xlabel(r'Time-point $t$ (1)')
+        self.ax_time.set_ylabel(r'Strain $E$ (%)')
 
         boundaries = dict(vmin=self.strain[:, :2, :].min(), vmax=self.strain[:, :2, :].max())
-        mesh1 = ax[1, 1].pcolormesh(x, y, np.ma.masked_where(z[0] == 0, z[0]), cmap='RdBu', **boundaries)
-        ax[1, 1].set_title(r'Circumferential strain $t_{%s}$' % peaks[0])
 
-        mesh2 = ax[1, 2].pcolormesh(x, y, np.ma.masked_where(z[1] == 0, z[1]), cmap='RdBu', **boundaries)
-        ax[1, 2].set_title(r'Radial strain $t_{%s}$' % peaks[1])
+        self.mesh_circ = self.ax_circ.pcolormesh(
+            self.x, self.y, np.ma.masked_where(self.z[t, 0] == 0, self.z[t, 0]), cmap='RdBu', **boundaries)
+        self.ax_circ.set_title('Circumferential strain')
 
-        center_x, center_y = deformation.mean(axis=(0, 2))
+        self.mesh_radi = self.ax_radi.pcolormesh(
+            self.x, self.y, np.ma.masked_where(self.z[t, 1] == 0, self.z[t, 1]), cmap='RdBu', **boundaries)
+        self.ax_radi.set_title('Radial strain')
+
+        cbar = plt.colorbar(self.mesh_radi, cax=self.fig.add_axes([0.13, 0.03, 0.02, 0.35]))
+        cbar.set_label(r'Strain $E$ (%)')
+        cbar.ax.yaxis.set_ticks_position('left')
+        cbar.ax.yaxis.set_label_position('left')
+
+        center_x, center_y = self.deformation.mean(axis=(0, 2))
         padding = 35
-        off_axes = [(0, 0), (0, 1), (1, 1), (1, 2), (1, 0)]
-        for a, b in off_axes:
-            ax[a, b].axis('off')
-            ax[a, b].set_xlim(center_x - padding, center_x + padding)
-            ax[a, b].set_ylim(center_y + padding, center_y - padding)
-
-        for n, axes in enumerate(np.array(ax.flat)[[0, 1, 2, 4, 5]]):
-            axes.text(-0.15, 1.13, string.ascii_uppercase[n], 
-                      transform=axes.transAxes, size=20, weight='bold')
-
-        plt.colorbar(mesh1, ax=ax[1, 1])
-        plt.colorbar(mesh2, ax=ax[1, 2])
+        for ax in [self.ax_circ, self.ax_radi]:
+            ax.axis('off')
+            ax.set_xlim(center_x - padding, center_x + padding)
+            ax.set_ylim(center_y + padding, center_y - padding)
 
         plt.tight_layout()
-        st.pyplot(fig)
+
+        self.anim = animation.FuncAnimation(
+            self.fig,
+            self.animate,
+            init_func=self.init_animation,
+            frames=25,
+            interval=50,
+            blit=True
+        )
+
+        plt.close()
+
+    def init_animation(self):
+        return self.animate(0)
+        
+    def animate(self, t):
+        
+        self.time_pt_c.set_data(t, self.mean_strain[t, 0])
+        self.time_pt_r.set_data(t, self.mean_strain[t, 1])
+        
+        self.mesh_circ.set_array(np.ma.masked_where(self.z[t, 0] == 0, self.z[t, 0]))
+        self.mesh_radi.set_array(np.ma.masked_where(self.z[t, 1] == 0, self.z[t, 1]))
+
+        return [self.time_pt_r, self.time_pt_c, self.mesh_circ, self.mesh_radi]

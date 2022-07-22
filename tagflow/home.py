@@ -1,4 +1,10 @@
+import functools
+import operator
+import itertools
+
 import numpy as np
+from scipy import ndimage
+
 import h5py
 
 import streamlit as st
@@ -45,26 +51,44 @@ def clear():
 
 
 def write():
+
+    st.write("""
+        # Home
+    """)
     
     ss = SessionState()
         
     if ss.status().value < SessionStatus.image.value:
         st.sidebar.button('Use sample image', on_click=load_sample)
-                
+
+        st.sidebar.write("""
+            Conversion from DICOM or Nifti can be done using 
+            [this script](https://gist.github.com/arnauddhaene/d85af1b923881e42ee4a73bdda4b2487).
+        """)
+        shape = st.sidebar.text_input('Array shape (e.g., WHT, HTW)', value='TWH')
         datafile = st.sidebar.file_uploader('Upload sequence of images in HDF5 format', type='h5',
                                             accept_multiple_files=False)
+
+        # Check that text input is legal
+        if shape in map(functools.partial(functools.reduce, operator.add), itertools.permutations('TWH', 3)):
         
-        if datafile:
-            hf = h5py.File(datafile, 'r')
-            dataset = st.sidebar.selectbox('Choose dataset', hf.keys())
-            
-            ss.image.update(
-                np.array(hf.get(dataset))
-            )
-            
-            Player().display()
+            if datafile:
+                # Get data from file
+                hf = h5py.File(datafile, 'r')
+                dataset = st.sidebar.selectbox('Choose dataset', hf.keys())
+                data_array = np.array(hf.get(dataset))
+                # Fix axes order and interpolate in time to fit to 25
+                data_array = np.moveaxis(data_array, tuple(map(shape.index, ['T', 'W', 'H'])), (0, 1, 2))
+                if data_array.shape[0] != 25:
+                    data_array = ndimage.zoom(data_array, (25. / data_array.shape[0], 1., 1.))
+
+                ss.image.update(data_array)
+                
+                Player().display()
+        else:
+            st.warning(f'Given shape: {shape} is not valid. Please follow convention.')
             
     else:
         st.sidebar.button('Clear current image', on_click=clear)
-        aspect = st.number_input('Image aspect', .5, 1.5, .6, .1)
+        aspect = st.number_input('Padding from ref center', .5, 1.5, .6, .1)
         Player(aspect).display()

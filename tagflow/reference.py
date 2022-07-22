@@ -13,7 +13,7 @@ def write():
         annot = st.sidebar.selectbox('Annotation', ['Neural Network', 'Hough Transform'])
         
         st.write("""
-            #  Reference setting page
+            #  Reference Setting
 
             Select the annotation method in the sidebar. Points will automatically be placed 
             around inner and outer contours. Use the **transform** and **point** drawing 
@@ -21,7 +21,7 @@ def write():
         """)
         col1, col2 = st.columns(2)
         stretch = col1.number_input('Image size', 2., 7., 6., .5)
-        aspect = col2.number_input('Image aspect', .5, 1.5, .6, .1)
+        aspect = col2.number_input('Padding from ref center', .5, 1.5, .6, .1)
         
         if annot == 'Hough Transform':
             HoughReference(stretch, aspect).display()

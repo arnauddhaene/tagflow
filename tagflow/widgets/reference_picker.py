@@ -109,12 +109,15 @@ class ReferencePicker(BaseWidget):
         xdim, ydim = tuple(self.image.shape[1:])
         shortest_dim = min(xdim, ydim)
         
-        cx, cy = xdim / 2, ydim / 2
+        if self.ref_points is None:
+            cx, cy = xdim / 2, ydim / 2
+        else:
+            cx, cy = self.ref_points[:, ::-1].mean(axis=0)
+    
+        padding = (shortest_dim / 2) * self.aspect
+        self.xmin, self.xmax = int(cx - padding), int(cx + padding)
+        self.ymin, self.ymax = int(cy - padding), int(cy + padding)
 
-        self.xmin, self.xmax = int(cx - (shortest_dim / 5)), int(cx + (shortest_dim / 5))
-        self.ymin, self.ymax = \
-            int(cy - (shortest_dim / (5 * self.aspect))), int(cy + (shortest_dim / (5 * self.aspect)))
-        
         ct, bn = st.sidebar.columns(2)
         
         contrast = ct.slider('Contrast', .5, 5., 1.25)
