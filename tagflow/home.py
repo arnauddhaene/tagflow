@@ -62,7 +62,7 @@ def write():
         st.sidebar.button('Use sample image', on_click=load_sample)
 
         st.sidebar.write("""
-            Conversion from DICOM or Nifti can be done using 
+            Conversion from DICOM or Nifti can be done using
             [this script](https://gist.github.com/arnauddhaene/d85af1b923881e42ee4a73bdda4b2487).
         """)
         shape = st.sidebar.text_input('Array shape (e.g., WHT, HTW)', value='TWH')

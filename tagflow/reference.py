@@ -15,8 +15,8 @@ def write():
         st.write("""
             #  Reference Setting
 
-            Select the annotation method in the sidebar. Points will automatically be placed 
-            around inner and outer contours. Use the **transform** and **point** drawing 
+            Select the annotation method in the sidebar. Points will automatically be placed
+            around inner and outer contours. Use the **transform** and **point** drawing
             modes to  drag and drop existing points or add additional ones respectively.
         """)
         col1, col2 = st.columns(2)
@@ -29,8 +29,8 @@ def write():
             NeuralReference(stretch, aspect).display()
 
         st.write("""
-            Please note that you should press the **Save reference** after contour point 
-            modification or reference setting method modification in order to update underlying 
+            Please note that you should press the **Save reference** after contour point
+            modification or reference setting method modification in order to update underlying
             ROI before tracking.
         """)
         
