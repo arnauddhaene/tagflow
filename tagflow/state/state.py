@@ -1,5 +1,8 @@
+import io
 import enum
 from typing import List
+
+import h5py
 
 import streamlit as st
 
@@ -43,3 +46,15 @@ class SessionState():
             return SessionStatus.deformation
         else:
             return SessionStatus.strain
+
+    def not_none_attributes(self):
+        return [name for name, artefact in self.__dict__.items() if artefact.value() is not None]
+
+    def prepare_bytes(self):
+        bio = io.BytesIO()
+        with h5py.File(bio, 'w') as f:
+            for name, artefact in self.__dict__.items():
+                if artefact.value() is not None:
+                    f[name] = artefact.value()
+
+        return bio

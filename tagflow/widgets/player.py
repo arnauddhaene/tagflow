@@ -10,6 +10,8 @@ import streamlit.components.v1 as components
 from .base import BaseWidget
 from ..state.state import SessionState, SessionStatus
 
+import streamlit as st
+
 
 class Player(BaseWidget):
     """Video player for displaying time-wise tracking and cardiac motion
@@ -36,8 +38,9 @@ class Player(BaseWidget):
     def display(self):
         """Display player by updating pyplot every 1 / exp(speed)"""
         
-        va = VideoAnimation(self.image, self.points, self.room)
-        components.html(va.anim.to_jshtml(), height=1000)
+        with st.spinner('Preparing animation...'):
+            va = VideoAnimation(self.image, self.points, self.room)
+            components.html(va.anim.to_jshtml(), height=1000)
 
 
 class VideoAnimation:

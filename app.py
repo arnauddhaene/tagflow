@@ -37,11 +37,11 @@ def main():
     st.sidebar.write('Automated myocardial strain estimation using tagged MR images')
     
     selected_page = st.sidebar.radio('Go to', PAGES.keys(), key='page')
-    
+
     st.sidebar.write("""---""")
     
     ss = SessionState()
-    
+
     if ss.status().value < SessionStatus.reference.value:
         st.sidebar.warning('Tracking reference not set.')
     else:
@@ -52,6 +52,14 @@ def main():
         st.sidebar.button('Launch tracking', on_click=_track, args=(ss.reference.value(),))
         
     PAGES[selected_page].write()
+
+    st.sidebar.write("""---""")
+
+    st.sidebar.write(f'Current status: `{ss.status()}`')
+    st.sidebar.download_button(
+        label='Download data', data=ss.prepare_bytes(),
+        file_name='tagflow_export.h5', mime='application/x-hdf5'
+    )
 
 
 @st.cache(hash_funcs={builtins.complex: lambda _: None})

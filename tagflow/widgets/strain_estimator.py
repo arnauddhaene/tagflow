@@ -61,8 +61,9 @@ class StrainEstimator(BaseWidget):
             # Myocardial strain visualization
         """)
 
-        sa = StrainAnimation(self.image, self.deformation, self.mesh, self.strain)
-        components.html(sa.anim.to_jshtml(), height=1000)
+        with st.spinner('Preparing strain visualization...'):
+            sa = StrainAnimation(self.image, self.deformation, self.mesh, self.strain)
+            components.html(sa.anim.to_jshtml(), height=1000)
 
 
 class StrainAnimation:
