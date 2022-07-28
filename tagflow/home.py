@@ -90,5 +90,8 @@ def write():
             
     else:
         st.sidebar.button('Clear current image', on_click=clear)
-        aspect = st.number_input('Padding from ref center', .5, 1.5, .6, .1)
+        if ss.status().value < SessionStatus.reference.value:
+            aspect = st.number_input('Padding from reference center', .5, 1.5, .6, .1)
+        else:
+            aspect = .6
         Player(aspect).display()

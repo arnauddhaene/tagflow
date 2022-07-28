@@ -25,7 +25,7 @@ class NeuralReference(ReferencePicker):
             roi (ArrayLike): circle coordinates for outer ROI [Cx, Cy, R]
         """
         self.roi = segment(self.image[0] / self.image[0].max())
-        contour = list(map(lambda c: c[::10, ::-1], measure.find_contours(self.roi)))
+        contour = list(map(lambda c: c[::15, ::-1], measure.find_contours(self.roi)))
         # self.contour = np.concatenate(contour)
         self.contour = contour
         self.ref_points = self.compute_ref_points()

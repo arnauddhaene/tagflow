@@ -69,6 +69,6 @@ class HoughReference(ReferencePicker):
         self.roi = self.circle_mask(circle, hc_input.shape, r2) ^ \
             self.circle_mask(circle, hc_input.shape, r1)
 
-        contour = list(map(lambda c: c[::10, ::-1], measure.find_contours(self.roi)))
+        contour = list(map(lambda c: c[::15, ::-1], measure.find_contours(self.roi)))
         # self.contour = np.concatenate(contour)
         self.contour = contour

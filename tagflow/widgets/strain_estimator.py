@@ -52,7 +52,7 @@ class StrainEstimator(BaseWidget):
             self.mesh, strain = EvaluationCase._strain(self.roi, self.deformation)
             ss.strain.update(strain)
 
-        self.mesh = np.array(np.where(self.roi))
+        self.mesh = np.array(np.where(self.roi.T))
         self.strain = ss.strain.value()
         self.image = ss.image.value()[0]
         self.deformation = ss.deformation.value()
@@ -90,7 +90,7 @@ class StrainAnimation:
         for t in range(25):
             for i, (coords, s) in enumerate(zip(self.mesh.T, self.strain.swapaxes(0, 2))):
                 m, n = tuple(coords)
-                self.z[t, :, m, n] = s[[0, 1], [t, t]]
+                self.z[t, :, n, m] = s[[0, 1], [t, t]]
 
         self.mean_strain = self.strain.mean(axis=2)
 
@@ -108,7 +108,8 @@ class StrainAnimation:
         self.ax_time.set_xlabel(r'Time-point $t$ (1)')
         self.ax_time.set_ylabel(r'Strain $E$ (%)')
 
-        boundaries = dict(vmin=self.strain[:, :2, :].min(), vmax=self.strain[:, :2, :].max())
+        boundary = max(np.abs(self.strain[:, :2, :].min()), np.abs(self.strain[:, :2, :].max()))
+        boundaries = dict(vmin=-boundary, vmax=boundary)
 
         self.mesh_circ = self.ax_circ.pcolormesh(
             self.x, self.y, np.ma.masked_where(self.z[t, 0] == 0, self.z[t, 0]), cmap='RdBu', **boundaries)

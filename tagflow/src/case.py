@@ -202,11 +202,14 @@ class EvaluationCase():
     @staticmethod
     def _strain(mask: np.ndarray, deformation: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         
-        mesh = np.array(np.where(mask))
-        
-        # Needs to be (2 x Npoints x time) to be solved more efficiently
+        mesh = np.array(np.where(mask.T)).T
+        center = mesh.mean(axis=0)
+        mesh = (mesh - center).T
+
+        # Needs to be (2 x Npoints x time)
         deformation = np.swapaxes(deformation, 0, 2)
-        
+        deformation = deformation - center[:, None, None]
+
         Nt = deformation.shape[2]
         Np = mesh.shape[1]
         
@@ -225,9 +228,9 @@ class EvaluationCase():
             gl_strain.append(get_principle_strain(mesh, deformation_grad))
         
         strain = np.array(gl_strain)
-        strain[np.isnan(strain)] = 0.
+        # strain[np.isnan(strain)] = 0.
         
-        return mesh, strain
+        return (mesh.T + center).T, strain
 
     def visualize(self) -> hv.Layout:
         
