@@ -2,6 +2,8 @@ import io
 import enum
 from typing import List
 
+import numpy as np
+
 import h5py
 
 import streamlit as st
@@ -54,7 +56,7 @@ class SessionState():
         bio = io.BytesIO()
         with h5py.File(bio, 'w') as f:
             for name, artefact in self.__dict__.items():
-                if artefact.value() is not None:
-                    f[name] = artefact.value()
+                if name != 'contour' and artefact.value() is not None:
+                    f[name] = np.array(artefact.value(), dtype=np.float64)
 
         return bio

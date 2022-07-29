@@ -97,33 +97,44 @@ class StrainAnimation:
 
         t = 0
 
-        self.ax_time.plot(list(range(25)), self.mean_strain[:, 0], label='Circumferential', c='r')
-        self.time_pt_c, = self.ax_time.plot(t, self.mean_strain[t, 0], marker='o', ms=8, c='r')
+        self.ax_time.plot(list(range(25)), self.mean_strain[:, 0], label='Circumferential', c='orange')
+        self.time_pt_c, = self.ax_time.plot(t, self.mean_strain[t, 0], marker='o', ms=8, c='orange')
 
-        self.ax_time.plot(list(range(25)), self.mean_strain[:, 1], label='Radial', c='b')
-        self.time_pt_r, = self.ax_time.plot(t, self.mean_strain[t, 1], marker='o', ms=8, c='b')
+        self.ax_time.plot(list(range(25)), self.mean_strain[:, 1], label='Radial', c='green')
+        self.time_pt_r, = self.ax_time.plot(t, self.mean_strain[t, 1], marker='o', ms=8, c='green')
+
+        self.ax_time.grid(linestyle=':')
+        yaxis_lim = max(np.abs(self.mean_strain.min()), np.abs(self.mean_strain.max()))
+        self.ax_time.set_ylim(-yaxis_lim * 1.1, yaxis_lim * 1.1)
 
         self.ax_time.legend(loc='best')
 
         self.ax_time.set_title('Avg. myocardial strain')
         self.ax_time.set_xlabel(r'Time-point $t$ (1)')
-        self.ax_time.set_ylabel(r'Strain $E$ (%)')
+        self.ax_time.set_ylabel(r'Strain $E$')
 
-        boundary = max(np.abs(self.strain[:, :2, :].min()), np.abs(self.strain[:, :2, :].max()))
+        boundary = max(np.abs(self.z[:, 0].min()), np.abs(self.z[:, 0].max()))
         boundaries = dict(vmin=-boundary, vmax=boundary)
 
         self.mesh_circ = self.ax_circ.pcolormesh(
-            self.x, self.y, np.ma.masked_where(self.z[t, 0] == 0, self.z[t, 0]), cmap='RdBu', **boundaries)
+            self.x, self.y, np.ma.masked_where(self.z[t, 0] == 0, self.z[t, 0]), cmap='PuOr', **boundaries)
         self.ax_circ.set_title('Circumferential strain')
 
+        boundary = max(np.abs(self.z[:, 1].min()), np.abs(self.z[:, 1].max()))
+        boundaries = dict(vmin=-boundary, vmax=boundary)
+
         self.mesh_radi = self.ax_radi.pcolormesh(
-            self.x, self.y, np.ma.masked_where(self.z[t, 1] == 0, self.z[t, 1]), cmap='RdBu', **boundaries)
+            self.x, self.y, np.ma.masked_where(self.z[t, 1] == 0, self.z[t, 1]), cmap='BrBG', **boundaries)
         self.ax_radi.set_title('Radial strain')
 
-        cbar = plt.colorbar(self.mesh_radi, cax=self.fig.add_axes([0.13, 0.03, 0.02, 0.35]))
-        cbar.set_label(r'Strain $E$ (%)')
-        cbar.ax.yaxis.set_ticks_position('left')
-        cbar.ax.yaxis.set_label_position('left')
+        cbar_1 = plt.colorbar(self.mesh_circ, cax=self.fig.add_axes([0.13, 0.03, 0.02, 0.35]))
+        cbar_1.set_label(r'Strain $E$')
+        cbar_1.ax.yaxis.set_ticks_position('left')
+        cbar_1.ax.yaxis.set_label_position('left')
+
+        cbar_2 = plt.colorbar(self.mesh_radi, cax=self.fig.add_axes([0.58, 0.03, 0.02, 0.35]))
+        cbar_2.ax.yaxis.set_ticks_position('left')
+        cbar_2.ax.yaxis.set_label_position('left')
 
         center_x, center_y = self.deformation.mean(axis=(0, 2))
         padding = 35
@@ -133,6 +144,7 @@ class StrainAnimation:
             ax.set_ylim(center_y + padding, center_y - padding)
 
         plt.tight_layout()
+        plt.subplots_adjust(wspace=0.)
 
         self.anim = animation.FuncAnimation(
             self.fig,
