@@ -5,7 +5,8 @@ import numpy as np
 
 
 TRACK_MODEL_PATH = Path(__file__).parent.parent / 'network_saves/resnet2_grid_tracking.pt'
-URL_API = 'http://172.17.0.5:5000'
+# URL_API = 'http://172.17.0.5:5000'
+URL_API = 'http://127.0.0.1:5000'
 
 
 def track(imt: np.ndarray, r0: np.ndarray) -> np.ndarray:

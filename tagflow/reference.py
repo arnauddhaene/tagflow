@@ -16,6 +16,6 @@ def write():
             HoughReference().display()
         elif annot == 'Neural Network':
             NeuralReference().display()
-        
+
     else:
         st.warning('Please uploade an image to use the Hough segmentation algorithm.')

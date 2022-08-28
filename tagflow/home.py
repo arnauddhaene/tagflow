@@ -26,14 +26,14 @@ def load_sample():
     shape = imt.shape[1:]
     roi = ReferencePicker.circle_mask(circle, shape, 0.9) ^ \
         ReferencePicker.circle_mask(circle, shape, 0.5)
-    
+            
     ss = SessionState()
 
     ss.roi.update(roi)
     ss.image.update(imt)
     ss.reference.update(r0)
     ss.deformation.update(y1r)
-
+    
 
 @st.cache
 def init():
