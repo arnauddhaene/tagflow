@@ -9,7 +9,7 @@ from ..utils import generate_reference
 def hough_circle(
     image: np.ndarray,
     dp: float, min_d: float, p1: float, p2: float,
-    min_r: float, max_r: float, circ: int, radial: int
+    min_r: float, max_r: float, **kwargs
 ) -> Tuple[np.ndarray, np.ndarray]:
     
     circles = cv2.HoughCircles(image.astype(np.uint8), cv2.HOUGH_GRADIENT,
@@ -25,6 +25,6 @@ def hough_circle(
 
     Cx, Cy, R = tuple(circles[0, 0])
 
-    r0 = generate_reference((R * .5, R * .9), circ, radial)
+    r0 = generate_reference((R * .5, R * .9), **kwargs)
 
     return r0 + np.array([Cx, Cy]), circles[0, 0]

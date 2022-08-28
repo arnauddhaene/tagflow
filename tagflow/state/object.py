@@ -11,7 +11,7 @@ def _validate_ndarray(value: np.ndarray) -> np.ndarray:
         raise ValueError(f'Must pass numpy.ndarray. Got {type(value)}')
 
     if np.isnan(value).sum() > 0:
-        raise ValueError('Must pass image that does not contain any NaNs.')
+        raise ValueError('Must pass array that does not contain any NaNs.')
     
     return value
 
@@ -133,5 +133,25 @@ class Strain(StateObject):
 
         if not value.dtype == np.float32:
             value = value.astype(np.float32)
+
+        return value
+
+
+class Contour(StateObject):
+
+    def __init__(self, value: np.ndarray = None):
+        super().__init__('contour', value)
+
+    @staticmethod
+    def _validate(value: np.ndarray) -> np.ndarray:
+
+        # TODO: fix validation of this data type
+        # value = _validate_ndarray(value)
+
+        # if not value.ndim == 3 or not value.shape[0] == 2 or not value.shape[3] == 2:
+        #     raise ValueError(f'Must pass array of shape (2, N, 2). Got {value.shape}.')
+
+        # if not value.dtype == np.float64:
+        #     value = value.astype(np.float64)
 
         return value

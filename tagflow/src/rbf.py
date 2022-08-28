@@ -134,6 +134,9 @@ class RBF:
             self.bfunc = bfunc_gaussian
             self.deriv_bfunc = deriv_bfunc_gaussian
             
+        # this calculates the pairwise euclidean distance between each point
+        # in the reference frame
+        # equal to sklearn.metrics.pairwise.euclidean_distances but faster ;)
         rad = nodes[:, :, None] - nodes[:, None, :]
         rad = np.linalg.norm(rad, axis=0)
         
