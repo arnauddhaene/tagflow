@@ -228,7 +228,6 @@ class EvaluationCase():
             gl_strain.append(get_principle_strain(mesh, deformation_grad))
         
         strain = np.array(gl_strain)
-        # strain[np.isnan(strain)] = 0.
         
         return (mesh.T + center).T, strain
 

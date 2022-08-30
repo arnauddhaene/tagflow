@@ -22,23 +22,24 @@ def load_data():
     return imt, r0, np.rollaxis(y1r, 2)
 
 
-def load_sample():
+def load_sample(load_artifacts: bool = False):
     imt, r0, y1r = load_data()
     
-    centre = r0.mean(axis=0).T
-    radius = 1.1 * np.abs(np.linalg.norm(centre - r0, axis=1)).max()
-    
-    circle = np.array([*centre, radius])
-    shape = imt.shape[1:]
-    roi = ReferencePicker.circle_mask(circle, shape, 0.9) ^ \
-        ReferencePicker.circle_mask(circle, shape, 0.5)
-            
     ss = SessionState()
-
-    ss.roi.update(roi)
     ss.image.update(imt)
-    ss.reference.update(r0)
-    ss.deformation.update(y1r)
+    
+    if load_artifacts:
+        centre = r0.mean(axis=0).T
+        radius = 1.1 * np.abs(np.linalg.norm(centre - r0, axis=1)).max()
+        
+        circle = np.array([*centre, radius])
+        shape = imt.shape[1:]
+        roi = ReferencePicker.circle_mask(circle, shape, 0.9) ^ \
+            ReferencePicker.circle_mask(circle, shape, 0.5)
+                
+        ss.roi.update(roi)
+        ss.reference.update(r0)
+        ss.deformation.update(y1r)
     
 
 @st.cache

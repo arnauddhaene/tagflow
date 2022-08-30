@@ -162,6 +162,7 @@ class RBF:
         b = np.hstack((b, np.zeros(self.Nextra)))
         self.current_coeff = scipy.linalg.lstsq(self.A, b)[0]
         # self.current_coeff = np.linalg.solve(self.A, b)
+        
         return self.current_coeff.copy()
     
     def interp(self, x, coeff=None):
@@ -230,12 +231,13 @@ class RBF:
             # Derivative of radial basis function
             rad = x[:, None, :] - self.nodes[:, :, None]
             rad = np.linalg.norm(rad, axis=0)
+                                                
             val = self.deriv_bfunc(rad, self.const)
             
             # times (x[k]-node[k])/rad
             dk = x[k, None, :] - self.nodes[k, :, None]
-            val *= dk / rad
-            
+            val *= dk / (rad + 1e-8)
+                        
             # Add a row of ones to add the correct linear component
             P = np.zeros([self.Nextra, val.shape[1]])
             P[k + 1] = 1.0
